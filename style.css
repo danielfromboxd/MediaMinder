@@ -1,0 +1,119 @@
+.koulen-regular {
+    font-family: "Koulen", serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+
+html, body {
+    box-sizing: border-box;
+    margin: 0;
+    font-family: 'Koulen', sans-serif;
+    overflow: hidden;
+}
+
+.container {
+    width: 100%;
+    height: 100vh;
+    background: white;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.left-panel {
+    width: 50%;
+    height: 100vh;
+    background: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.welcome-text {
+    color: white;
+    font-size: 5rem;
+    font-family: 'Koulen', sans-serif;
+    font-weight: 400;
+    display: flex;
+}
+
+.signup-section {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.signup-box {
+    width: 445px;
+    height: 500px;
+    padding: 16px 24px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.signup-title {
+    color: black;
+    font-size: 72px;
+    font-family: 'Koulen', sans-serif;
+    font-weight: 400;
+    line-height: 86.40px;
+    text-align: center;
+}
+
+.form {
+    padding: 24px;
+    background: white;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+label {
+    color: #1E1E1E;
+    font-size: 16px;
+    line-height: 22.40px;
+}
+
+input {
+    padding: 12px 16px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #D9D9D9;
+    color: #B3B3B3;
+    font-size: 16px;
+}
+
+.signup-button {
+    width: 272px;
+    height: 40px;
+    padding: 12px;
+    background: #405DE0;
+    border-radius: 8px;
+    color: #F5F5F5;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.login-text {
+    text-align: center;
+    color: black;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+}
