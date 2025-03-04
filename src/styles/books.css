@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Koulen&family=Josefin+Sans:wght@400&family=Hind:wght@400&display=swap');
+
+/* Depth 0: FRAME (Books) */
+.books-container {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
+/* Navigation sidebar */
+.navigation-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 10;
+}
+
+/* Content area */
+.content-area {
+  margin-left: 200px; /* Space for navigation */
+  width: calc(100% - 200px);
+  padding: 20px;
+}
+
+/* Site header */
+.site-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.site-logo {
+  width: 41px;
+  height: 38px;
+  margin-right: 8px;
+}
+
+.site-title {
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 23px;
+  color: #000000;
+}
+
+/* Books title */
+.books-title {
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 96px;
+  line-height: 134px;
+  color: #000000;
+  margin-bottom: 20px;
+  width: 220px;
+}
+
+/* Search container */
+.search-container {
+  width: 857px;
+  max-width: 100%;
+  margin-bottom: 40px;
+}
+
+/* Search results */
+.search-results {
+  width: 886px;
+  max-width: 100%;
+}
+
+/* Responsive styles */
+@media (max-width: 1200px) {
+  .books-title {
+    font-size: 72px;
+    line-height: 100px;
+  }
+  
+  .search-container {
+    width: 100%;
+  }
+  
+  .search-results {
+    width: 100%;
+  }
+}
+
+@media (max-width: 992px) {
+  .content-area {
+    margin-left: 0;
+    width: 100%;
+    padding-top: 300px; /* Space for navigation that will be at the top */
+  }
+  
+  .navigation-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+  }
+  
+  .books-title {
+    font-size: 60px;
+    line-height: 84px;
+  }
+}
+
+@media (max-width: 576px) {
+  .books-title {
+    font-size: 48px;
+    line-height: 67px;
+  }
+}
