@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap');
+
+/* Depth 0: COMPONENT_SET (Media poster and title) */
+.media-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 5px;
+  width: 146px;
+  transition: all 0.3s ease;
+}
+
+/* Depth 1: COMPONENT (Property 1=Default/Hover) */
+.media-container {
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.media-container.default {
+  width: 146px;
+}
+
+.media-container.hover {
+  width: 166px;
+}
+
+/* Depth 2: TEXT (Media Name) */
+.media-title {
+  font-family: 'Josefin Sans', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 28px;
+  margin: 0;
+  padding: 3px 0;
+  height: 34px;
+  transition: all 0.3s ease;
+}
+
+.media-container.default .media-title {
+  color: #000000;
+  width: 146px;
+}
+
+.media-container.hover .media-title {
+  color: #798ee9;
+  width: 166px;
+}
+
+/* Depth 2: RECTANGLE (Rectangle 1) */
+.media-placeholder {
+  background-color: #d9d9d9;
+  transition: all 0.3s ease;
+}
+
+.media-container.default .media-placeholder {
+  width: 146px;
+  height: 220px;
+}
+
+.media-container.hover .media-placeholder {
+  width: 166px;
+  height: 250px;
+}

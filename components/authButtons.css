@@ -1,0 +1,23 @@
+/* Depth 0: FRAME (Log-in/Sign-up buttons) */
+.auth-buttons-container {
+    display: flex;
+    flex-direction: column;
+    width: 343px;
+    height: 596px;
+    background-color: #ffffff;
+    padding: 20px;
+    gap: 20px;
+  }
+  
+  /* Depth 1: COMPONENT_SET (Sign-up Button/Log-in Button) */
+  .button-set {
+    display: flex;
+    flex-direction: column;
+    width: 312px;
+    height: 200px;
+    border-radius: 5px;
+    border: 1px transparent;
+    padding: 20px;
+    justify-content: center;
+    align-items: center;
+  }
