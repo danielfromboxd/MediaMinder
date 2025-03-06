@@ -1,0 +1,56 @@
+/* Depth 0: COMPONENT_SET (Rating) */
+.star-rating-container {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    width: 207px;
+    height: 171px;
+    gap: 7px;
+    border-radius: 5px;
+    border: 1px dashed #9747ff;
+    background-color: #000000;
+  }
+  
+  /* Depth 1: COMPONENT (Stars=X, Estate=Default/Hover) */
+  .star-row {
+    display: flex;
+    flex-direction: vertical;
+    width: 80px;
+    height: 16px;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  .star-row:hover {
+    transform: scale(1.05);
+  }
+  
+  /* Depth 2: FRAME (Star) */
+  .star-group {
+    display: flex;
+    flex-direction: row;
+    width: 80px;
+    height: 16px;
+    gap: 0;
+  }
+  
+  /* Star icon styling */
+  .star-group svg {
+    transition: all 0.2s ease;
+  }
+  
+  .star-row:hover svg path {
+    stroke-width: 1.5;
+  }
+  
+  /* Animation for star hover */
+  @keyframes starPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+  
+  .star-row.hovered svg {
+    animation: starPulse 0.5s ease;
+  }

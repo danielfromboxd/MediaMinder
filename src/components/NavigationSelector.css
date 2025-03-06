@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Koulen&display=swap');
+
+.navigation-selector {
+  /* Depth 0: COMPONENT_SET (Navigation Selector) */
+  border-radius: 5px;
+  width: 186px;
+}
+
+.navigation-container {
+  /* Depth 1: COMPONENT */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #ffffff;
+  width: 186px;
+}
+
+.navigation-header {
+  /* Depth 2: FRAME (Navigation) */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px;
+  height: 32px;
+  gap: 7px;
+  border-radius: 5px;
+}
+
+.navigation-title {
+  /* Depth 3: TEXT (Navigation) */
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 56px;
+  color: #405de0;
+  margin: 0;
+}
+
+.navigation-toggle {
+  /* Depth 3: VECTOR (Polygon 1) */
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #000000;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.navigation-toggle.closed {
+  transform: rotate(-90deg);
+}
+
+.navigation-pages {
+  /* Depth 2: FRAME (Pages) */
+  display: flex;
+  flex-direction: column;
+  padding: 0px 6px;
+  gap: 5px;
+  width: calc(100% - 12px);
+}
+
+.navigation-item {
+  /* Depth 3: FRAME (Home/Books/Series/Movies/Settings) */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 15px 0 0 5px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.navigation-icon {
+  /* Depth 4: VECTOR (Vector) */
+  width: 20px;
+  height: 20px;
+  fill: #000000;
+}
+
+.navigation-text {
+  /* Depth 4: TEXT (Home/Books/Series/Movies/Settings) */
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 45px;
+  color: #0123aa;
+  margin-left: 10px;
+}
+
+.navigation-divider {
+  /* Depth 3: VECTOR (Line) */
+  width: 135px;
+  height: 1px;
+  background-color: #000000;
+  margin: 0 auto;
+}
+
+.logout-container {
+  /* Depth 4: FRAME (Frame 2) */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hover states */
+.navigation-item.hovered .navigation-text {
+  color: #798ee9;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .navigation-selector {
+    width: 160px;
+  }
+  
+  .navigation-container {
+    width: 160px;
+  }
+  
+  .navigation-title {
+    font-size: 32px;
+    line-height: 45px;
+  }
+  
+  .navigation-text {
+    font-size: 28px;
+    line-height: 40px;
+  }
+}

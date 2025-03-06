@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Koulen&family=Josefin+Sans:wght@400&family=Hind:wght@400&display=swap');
+
+/* Depth 0: FRAME (Dashboard/home) */
+.dashboard-container {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
+/* Dashboard navigation */
+.dashboard-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 10;
+}
+
+/* Dashboard content */
+.dashboard-content {
+  margin-left: 200px; /* Space for navigation */
+  width: calc(100% - 200px);
+  padding: 20px;
+}
+
+/* Depth 1: INSTANCE (Searchbar) */
+.search-container {
+  width: 857px;
+  max-width: 100%;
+  margin-bottom: 40px;
+}
+
+/* Media sections */
+.media-section {
+  margin-bottom: 60px;
+}
+
+/* Depth 1: TEXT (Want to watch/read, in progress, finished) */
+.section-title {
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 64px;
+  line-height: 90px;
+  color: #000000;
+  margin-bottom: 20px;
+}
+
+/* Depth 1: FRAME (Grouped Media) */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 91px;
+  width: 947px;
+  max-width: 100%;
+}
+
+/* Depth 2: INSTANCE (Media poster and title) */
+.media-item {
+  width: 146px;
+  height: 254px;
+}
+
+/* Responsive styles */
+@media (max-width: 1200px) {
+  .media-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 60px;
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-content {
+    margin-left: 0;
+    width: 100%;
+    padding-top: 300px; /* Space for navigation that will be at the top */
+  }
+  
+  .dashboard-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+  }
+  
+  .media-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+  }
+  
+  .section-title {
+    font-size: 48px;
+    line-height: 67px;
+  }
+}
+
+@media (max-width: 576px) {
+  .media-grid {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  
+  .search-container {
+    width: 100%;
+  }
+}

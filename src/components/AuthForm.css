@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Koulen&family=Hind+Vadodara:wght@400;600&family=Inter:wght@400&display=swap');
+
+/* Depth 0: COMPONENT_SET (Sign-up) */
+.auth-form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Depth 1: COMPONENT (Property 1=Default, Property 2=Sign-up/Log-in) */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 24px 0;
+}
+
+.auth-form.login {
+  width: 345px;
+}
+
+.auth-form.signup {
+  width: 445px;
+}
+
+/* Depth 2: TEXT (Log In!/Sign Up!) */
+.auth-title {
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 72px;
+  line-height: 101px;
+  color: #000000;
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.signup-container .auth-title {
+  line-height: 86px;
+}
+
+/* Form fields */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  width: 272px;
+  margin-bottom: 24px;
+}
+
+.input-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  color: #1e1e1e;
+  margin-bottom: 8px;
+}
+
+.signup-container .input-label {
+  font-family: 'Hind Vadodara', sans-serif;
+}
+
+.input-container {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  background-color: #ffffff;
+  box-sizing: border-box;
+}
+
+.input-field {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 16px;
+  color: #000000;
+}
+
+.signup-container .input-field {
+  font-family: 'Hind Vadodara', sans-serif;
+}
+
+.input-field::placeholder {
+  color: #b3b3b3;
+}
+
+/* Button */
+.auth-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 272px;
+  height: 40px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #405de0;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.button-text {
+  font-family: 'Hind Vadodara', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 16px;
+  color: #f5f5f5;
+}
+
+/* Toggle text */
+.auth-toggle-text {
+  font-family: 'Hind Vadodara', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 16px;
+  color: #000000;
+  text-align: center;
+  width: 100%;
+}
+
+.auth-toggle-link {
+  cursor: pointer;
+  color: #405de0;
+  margin-left: 5px;
+}
+
+/* Sign-up specific styles */
+.signup-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 24px;
+}
+
+.title-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px;
+  border-radius: 8px;
+  background-color: #ffffff;
+}

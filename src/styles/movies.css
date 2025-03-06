@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Koulen&family=Josefin+Sans:wght@400&family=Hind:wght@400&display=swap');
+
+/* Depth 0: FRAME (Movies) */
+.movies-container {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
+/* Navigation sidebar */
+.navigation-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 10;
+}
+
+/* Content area */
+.content-area {
+  margin-left: 200px; /* Space for navigation */
+  width: calc(100% - 200px);
+  padding: 20px;
+}
+
+/* Site header */
+.site-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.site-logo {
+  width: 41px;
+  height: 38px;
+  margin-right: 8px;
+}
+
+.site-title {
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 23px;
+  color: #000000;
+}
+
+/* Movies title */
+.movies-title {
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 96px;
+  line-height: 134px;
+  color: #000000;
+  margin-bottom: 20px;
+  width: 238px;
+}
+
+/* Search container */
+.search-container {
+  width: 857px;
+  max-width: 100%;
+  margin-bottom: 40px;
+}
+
+/* Search results */
+.search-results {
+  width: 886px;
+  max-width: 100%;
+}
+
+/* Media grid */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 91px;
+  margin-bottom: 40px;
+}
+
+/* Media card */
+.media-card {
+  display: flex;
+  flex-direction: column;
+  width: 146px;
+  height: 254px;
+}
+
+.media-title {
+  font-family: 'Josefin Sans', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 28px;
+  color: #000000;
+  margin: 0 0 4px 0;
+  height: 34px;
+  width: 146px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-placeholder {
+  width: 146px;
+  height: 220px;
+  background-color: #d9d9d9;
+}
+
+/* Pagination container */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 20px;
+}
+
+/* Responsive styles */
+@media (max-width: 1200px) {
+  .movies-title {
+    font-size: 72px;
+    line-height: 100px;
+  }
+  
+  .search-container {
+    width: 100%;
+  }
+  
+  .search-results {
+    width: 100%;
+  }
+  
+  .media-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+  }
+}
+
+@media (max-width: 992px) {
+  .content-area {
+    margin-left: 0;
+    width: 100%;
+    padding-top: 300px; /* Space for navigation that will be at the top */
+  }
+  
+  .navigation-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+  }
+  
+  .movies-title {
+    font-size: 60px;
+    line-height: 84px;
+  }
+  
+  .media-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .media-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
+  .movies-title {
+    font-size: 48px;
+    line-height: 67px;
+  }
+}
+
+@media (max-width: 480px) {
+  .media-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}

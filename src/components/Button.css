@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Hind+Vadodara:wght@600&display=swap');
+
+.auth-button {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+  width: 272px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Default state */
+.auth-button.default {
+  background-color: #405de0;
+}
+
+/* Hover state */
+.auth-button.hover {
+  background-color: #798ee9;
+}
+
+/* Pressed state */
+.auth-button.pressed {
+  background-color: #0123aa;
+}
+
+.button-text {
+  font-family: 'Hind Vadodara', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 16px;
+  color: #f5f5f5;
+}
+
+/* Specific sizing for each variant */
+.login .button-text {
+  width: 44px;
+  height: 16px;
+}
+
+.signup .button-text {
+  width: 54px;
+  height: 16px;
+}
