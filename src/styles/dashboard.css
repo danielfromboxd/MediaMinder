@@ -3,105 +3,192 @@
 /* Depth 0: FRAME (Dashboard/home) */
 .dashboard-container {
   display: flex;
+  flex-direction: column;
+  padding: 4px 0 0 0; /* Remove horizontal padding */
   width: 100%;
   min-height: 100vh;
   background-color: #ffffff;
+  gap: 12px;
+  align-items: center; /* Center the content */
 }
 
-/* Dashboard navigation */
-.dashboard-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  z-index: 10;
+/* Add this new container */
+.navigation-area {
+  display: flex;
+  flex-direction: column;
+  width: 186px; /* Same as navigation-sidebar */
+  gap: 12px;
 }
 
-/* Dashboard content */
-.dashboard-content {
-  margin-left: 200px; /* Space for navigation */
-  width: calc(100% - 200px);
-  padding: 20px;
+/* Depth 1: FRAME (Site title + logo) */
+.site-header {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 186px; /* Match navigation width */
+  height: 41px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-/* Depth 1: INSTANCE (Searchbar) */
+/* Depth 2: RECTANGLE (Logo) */
+.site-logo {
+  width: 41px;
+  height: 38px;
+}
+
+.site-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Depth 2: TEXT (MEDIA MINDER) */
+.site-title {
+  width: 108px;
+  height: 41px;
+  font-family: 'Koulen', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 23px;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* Depth 1: FRAME (Main Content Container) */
+.main-content-container {
+  display: flex;
+  width: 100%;
+  max-width: 1254px;
+  min-height: 1928px;
+  gap: 121px;
+}
+
+/* Depth 2: INSTANCE (Navigation Selector) */
+.navigation-sidebar {
+  width: 186px;
+  height: 287px;
+}
+
+/* Depth 2: FRAME (Searchbar + Media) */
+.searchbar-media-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 947px;
+  gap: 36px;
+}
+
+/* Depth 3: INSTANCE (Searchbar) */
 .search-container {
   width: 857px;
   max-width: 100%;
-  margin-bottom: 40px;
+  height: 50px;
 }
 
-/* Media sections */
-.media-section {
-  margin-bottom: 60px;
+/* Media Section Containers */
+.media-section-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 947px;
 }
 
-/* Depth 1: TEXT (Want to watch/read, in progress, finished) */
+.media-section-subcontainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 2px;
+}
+
+/* Depth 5: TEXT (Section titles) */
 .section-title {
+  width: 100%;
+  height: 90px;
   font-family: 'Koulen', sans-serif;
   font-weight: 400;
   font-size: 64px;
   line-height: 90px;
-  color: #000000;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* Depth 5: FRAME (Grouped Media) */
+.media-grid {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 947px;
+  gap: 91px;
   margin-bottom: 20px;
 }
 
-/* Depth 1: FRAME (Grouped Media) */
-.media-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 91px;
-  width: 947px;
-  max-width: 100%;
-}
-
-/* Depth 2: INSTANCE (Media poster and title) */
+/* Media Item */
 .media-item {
   width: 146px;
-  height: 254px;
 }
 
 /* Responsive styles */
 @media (max-width: 1200px) {
-  .media-grid {
-    grid-template-columns: repeat(3, 1fr);
+  .dashboard-container {
+    padding: 4px 50px 0px 13px;
+  }
+  
+  .main-content-container {
     gap: 60px;
+  }
+  
+  .media-grid {
+    gap: 40px;
   }
 }
 
 @media (max-width: 992px) {
-  .dashboard-content {
-    margin-left: 0;
-    width: 100%;
-    padding-top: 300px; /* Space for navigation that will be at the top */
+  .dashboard-container {
+    padding: 4px 20px 0px 13px;
   }
   
-  .dashboard-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
+  .main-content-container {
+    flex-direction: column;
+    gap: 30px;
+  }
+  
+  .navigation-sidebar {
     width: 100%;
     height: auto;
   }
   
-  .media-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 40px;
+  .searchbar-media-container {
+    width: 100%;
+  }
+  
+  .search-container {
+    width: 100%;
   }
   
   .section-title {
     font-size: 48px;
     line-height: 67px;
+    height: 67px;
+  }
+}
+
+@media (max-width: 768px) {
+  .media-grid {
+    gap: 20px;
+    justify-content: center;
   }
 }
 
 @media (max-width: 576px) {
-  .media-grid {
-    grid-template-columns: 1fr;
-    justify-items: center;
+  .dashboard-container {
+    padding: 4px 10px 0px 10px;
   }
   
-  .search-container {
-    width: 100%;
+  .section-title {
+    font-size: 36px;
+    line-height: 50px;
+    height: 50px;
   }
 }

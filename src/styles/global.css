@@ -1,6 +1,24 @@
 /* Import fonts used across the application */
 @import url('https://fonts.googleapis.com/css2?family=Koulen&family=Josefin+Sans:wght@300;600&family=Hind+Vadodara:wght@400;500;600&family=Hind+Siliguri:wght@600&family=Hind:wght@400&family=Inter:wght@400;700&display=swap');
 
+/* Reset default browser margins and padding */
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: #FFFFFF;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden; /* Prevents horizontal scrolling */
+}
+
+body, #root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  width: 100%;
+  background-color: #FFFFFF;
+}
+
 /* CSS Reset */
 * {
   margin: 0;
