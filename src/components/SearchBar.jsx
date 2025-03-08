@@ -1,7 +1,7 @@
 import React from 'react';
 import './SearchBar.css';
 // Import the search icon from assets folder
-import { ReactComponent as SearchIcon } from '../assets/searchVector.svg';
+import SearchIcon from '../assets/searchVector.svg?react';
 
 const SearchBar = ({ formFactor = 'wide' }) => {
   const isWide = formFactor === 'wide';

@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import './NavigationSelector.css';
 
 // Icons for navigation items
-import { ReactComponent as HomeIcon } from '../assets/home.svg';
-import { ReactComponent as BooksIcon } from '../assets/books.svg';
-import { ReactComponent as SeriesIcon } from '../assets/eries.svg';
-import { ReactComponent as MoviesIcon } from '../assets/movies.svg';
-import { ReactComponent as GearIcon } from '../assets/gear.svg';
-import { ReactComponent as SignOutIcon } from '../assets/signout.svg';
+import HomeIcon from '../assets/homeVector.svg?react';
+import BooksIcon from '../assets/bookVector.svg?react';
+import SeriesIcon from '../assets/seriesVector.svg?react';
+import MoviesIcon from '../assets/moviesVector.svg?react';
+import GearIcon from '../assets/settingsVector.svg?react';
+import SignOutIcon from '../assets/logOutVector.svg?react';
 
 const NavigationSelector = ({ defaultOpen = true }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
