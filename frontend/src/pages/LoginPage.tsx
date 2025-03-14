@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from '@/components/ui/use-toast';
 import AuthSidebar from '@/components/AuthSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -11,38 +10,29 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { login, error } = useAuth();
   const navigate = useNavigate();
-  const { login } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    try {
-      const success = await login(email, password);
-      
-      if (success) {
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
-        });
-        navigate('/home');
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid email or password.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+    const success = await login(email, password);
+    
+    setIsLoading(false);
+    
+    if (success) {
       toast({
-        title: "Login error",
-        description: "An unexpected error occurred.",
+        title: "Success!",
+        description: "You have been logged in.",
+      });
+      navigate('/home');
+    } else {
+      toast({
+        title: "Login failed",
+        description: error || "Please check your credentials and try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -54,7 +44,7 @@ const LoginPage = () => {
         <div className="w-full max-w-md">
           <h2 className="text-4xl font-bold mb-8">LOG IN!</h2>
           
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="email" className="block">Enter your e-mail</label>
               <Input

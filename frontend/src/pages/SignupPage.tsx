@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -8,43 +7,35 @@ import AuthSidebar from '@/components/AuthSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 
 const SignupPage = () => {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { signup, error } = useAuth();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    try {
-      const success = await signup(name, email, password);
-      
-      if (success) {
-        toast({
-          title: "Account created",
-          description: "You've successfully signed up!",
-        });
-        navigate('/home');
-      } else {
-        toast({
-          title: "Signup failed",
-          description: "Failed to create account.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+    const success = await signup(username, email, password);
+    
+    if (success) {
       toast({
-        title: "Signup error",
-        description: "An unexpected error occurred.",
+        title: "Account created",
+        description: "You've successfully signed up!",
+      });
+      navigate('/home');
+    } else {
+      toast({
+        title: "Signup failed",
+        description: error || "Failed to create account.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -57,13 +48,13 @@ const SignupPage = () => {
           
           <form onSubmit={handleSignup} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="name" className="block">Enter your name</label>
+              <label htmlFor="username" className="block">Enter your username</label>
               <Input
-                id="name"
+                id="username"
                 type="text"
-                placeholder="John Smith"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                placeholder="john_smith"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
