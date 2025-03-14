@@ -1,26 +1,30 @@
 import axios from 'axios';
 
-// Base API URL - change this to  deployed URL in production
-const API_URL = 'http://localhost:5000/api';
-
-// Create axios instance with default config
+// Create an axios instance with updated configuration
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: 'http://localhost:5000/api',
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   },
+  // Add withCredentials to properly handle CORS with credentials
+  withCredentials: true
 });
 
-// Add token to requests if available
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Add a request interceptor to add the token to each request
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
-// Auth API calls
+// Authentication API calls
 export const authAPI = {
   login: async (email: string, password: string) => {
     console.log("Sending login request to API");

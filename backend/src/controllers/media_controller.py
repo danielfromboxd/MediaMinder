@@ -8,28 +8,47 @@ from ..models.user_media import UserMedia
 
 def get_user_media():
     user_id = get_jwt_identity()
-    print(f"Fetching media for user {user_id}")
+    print(f"\n\n===== GET USER MEDIA =====")
+    print(f"USER ID: {user_id}")
     
     # Get all user_media records with their related media
-    user_media_items = UserMedia.query.filter_by(user_id=user_id).all()
-    print(f"Found {len(user_media_items)} media items")
-    
-    # Debug each item
-    for item in user_media_items:
-        print(f"Item {item.id}: {item.media.title} ({item.media.type}) - Status: {item.status}")
-    
-    return jsonify([item.to_dict() for item in user_media_items]), 200
+    try:
+        user_media_items = UserMedia.query.filter_by(user_id=user_id).all()
+        print(f"✅ FOUND {len(user_media_items)} ITEMS")
+        
+        # Debug each item
+        for item in user_media_items:
+            print(f"📦 ITEM {item.id}: Media ID {item.media_id}, Status: {item.status}")
+            print(f"   Media: {item.media.title} ({item.media.type})")
+        
+        result = [item.to_dict() for item in user_media_items]
+        print(f"📤 RETURNING {len(result)} ITEMS")
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"❌ ERROR GETTING USER MEDIA: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
 
 def add_media_item():
     user_id = get_jwt_identity()
     data = request.get_json()
     
-    print(f"Received add media request: {data}")
+    print("\n\n===== ADD MEDIA REQUEST =====")
+    print(f"USER ID: {user_id}")
+    print(f"REQUEST DATA: {data}")
+    
+    # NEW: Echo the raw request content
+    print("RAW REQUEST CONTENT:")
+    print(request.data)
+    print("REQUEST HEADERS:")
+    print(request.headers)
     
     # Validate input
     required_fields = ['media_id', 'title', 'media_type', 'status']
     if not all(field in data for field in required_fields):
-        print(f"Missing required fields. Got: {data.keys()}")
+        print(f"❌ MISSING FIELDS! Got: {data.keys()}")
         return jsonify({'error': 'Missing required fields'}), 400
     
     try:
@@ -38,7 +57,7 @@ def add_media_item():
         
         # If media doesn't exist, create it
         if not media:
-            print(f"Creating new media: {data['title']} ({data['media_type']})")
+            print(f"➕ CREATING NEW MEDIA: {data['title']} ({data['media_type']})")
             media = Media(
                 external_id=str(data['media_id']),
                 type=data['media_type'],
@@ -47,16 +66,18 @@ def add_media_item():
             )
             db.session.add(media)
             db.session.flush()  # Get ID without committing
-            print(f"Created media with ID: {media.id}")
+            print(f"✅ CREATED MEDIA WITH ID: {media.id}")
+        else:
+            print(f"🔍 FOUND EXISTING MEDIA: {media.title} (ID: {media.id})")
         
         # Check if user already tracks this media
         existing = UserMedia.query.filter_by(user_id=user_id, media_id=media.id).first()
         if existing:
-            print(f"User {user_id} already tracks media {media.id}")
+            print(f"⚠️ USER {user_id} ALREADY TRACKS MEDIA {media.id}")
             return jsonify({'error': 'Media already in your list'}), 409
         
         # Create new user_media entry
-        print(f"Creating user_media for user {user_id}, media {media.id}, status {data['status']}")
+        print(f"➕ CREATING USER_MEDIA FOR USER {user_id}, MEDIA {media.id}, STATUS {data['status']}")
         user_media = UserMedia(
             user_id=user_id,
             media_id=media.id,
@@ -66,17 +87,24 @@ def add_media_item():
         
         db.session.add(user_media)
         db.session.commit()
-        print(f"Created user_media with ID: {user_media.id}")
+        print(f"✅ CREATED USER_MEDIA WITH ID: {user_media.id}")
+        
+        # Debug the result
+        result = user_media.to_dict()
+        print(f"📤 RETURNING: {result}")
         
         # Return with complete data for frontend
         return jsonify({
             'message': 'Media added successfully',
-            'item': user_media.to_dict()
+            'item': result
         }), 201
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error adding media: {str(e)}")
+        print(f"❌ ERROR ADDING MEDIA: {str(e)}")
+        print(f"ERROR TYPE: {type(e).__name__}")
+        import traceback
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 def update_media_item(item_id):

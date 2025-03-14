@@ -1,4 +1,4 @@
-from flask import Blueprint
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 from ..controllers.media_controller import get_user_media, add_media_item, update_media_item, delete_media_item
 
@@ -13,8 +13,13 @@ media_bp.route('/<int:item_id>', methods=['DELETE'])(jwt_required()(delete_media
 @media_bp.route('', methods=['POST'])
 @jwt_required()
 def add_new_media():
-    print("Received POST request to /api/media")
-    return add_media_item()
+    try:
+        return add_media_item()
+    except Exception as e:
+        print(f"CRITICAL ERROR: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 @media_bp.route('', methods=['GET'])
 @jwt_required()

@@ -49,6 +49,7 @@ export const MediaTrackingProvider = ({ children }: { children: ReactNode }) => 
   useEffect(() => {
     const fetchUserMedia = async () => {
       if (!isLoggedIn) {
+        console.log("User not logged in, clearing media data");
         setTrackedMedia([]);
         return;
       }
@@ -59,21 +60,41 @@ export const MediaTrackingProvider = ({ children }: { children: ReactNode }) => 
         const data = await mediaAPI.getUserMedia();
         console.log("Fetched media data:", data);
         
+        if (!data || data.length === 0) {
+          console.log("No media found for user");
+          setTrackedMedia([]);
+          return;
+        }
+        
+        // Check if data has the expected structure
+        if (!Array.isArray(data)) {
+          console.error("Expected array from API but got:", typeof data);
+          setError("Invalid data format received from server");
+          return;
+        }
+        
         // Transform the data to match our TrackedMedia interface
-        const transformedMedia: TrackedMedia[] = data.map((item: any) => {
+        const transformedMedia = data.map((item: any): TrackedMedia | null => {
           console.log("Processing item:", item);
+          
+          // Check if item has required properties
+          if (!item.media || !item.media.external_id) {
+            console.error("Item missing required properties:", item);
+            return null;
+          }
+          
           return {
             id: item.id.toString(),
             mediaId: item.media.external_id,
             type: item.media.type as MediaType,
             title: item.media.title,
-            posterPath: item.media.image_url,
+            posterPath: item.media.image_url || null,
             rating: item.rating,
             status: item.status as MediaStatus,
             addedAt: item.updated_at || new Date().toISOString(),
             updatedAt: item.updated_at || new Date().toISOString()
           };
-        });
+        }).filter((item): item is TrackedMedia => item !== null);
         
         console.log("Transformed media:", transformedMedia);
         setTrackedMedia(transformedMedia);

@@ -25,8 +25,8 @@ class Media(db.Model):
     page_count = db.Column(db.Integer, nullable=True)
     publisher = db.Column(db.String(100), nullable=True)
     
-    # Relationships
-    user_media = db.relationship('UserMedia', backref='media', lazy=True, cascade='all, delete-orphan')
+    # Relationships - FIX: remove conflicting definitions
+    user_media_items = db.relationship('UserMedia', back_populates='media', cascade='all, delete-orphan')
     genres = db.relationship('Genre', secondary='media_genres', back_populates='media')
     
     def to_dict(self):

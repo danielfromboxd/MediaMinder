@@ -8,11 +8,11 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationship with user_media items
-    user_media = db.relationship('UserMedia', backref='user', lazy=True, cascade='all, delete-orphan')
+    user_media = db.relationship('UserMedia', back_populates='user', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         print(f"Setting password for user {self.username}")

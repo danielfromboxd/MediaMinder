@@ -36,7 +36,7 @@ def register():
     
     # Generate access token
     access_token = create_access_token(
-        identity=new_user.id,
+        identity=str(new_user.id),
         additional_claims={'username': new_user.username},
         expires_delta=timedelta(days=1)
     )
@@ -62,7 +62,7 @@ def login():
     
     # Generate access token
     access_token = create_access_token(
-        identity=user.id,
+        identity=str(user.id),
         additional_claims={'username': user.username},
         expires_delta=timedelta(days=1)
     )
