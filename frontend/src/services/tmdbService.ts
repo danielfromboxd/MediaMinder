@@ -6,7 +6,7 @@
 
 // TMDB API requires an API key
 // This is a public API key - it's meant to be included in client-side code
-const TMDB_API_KEY = "***REMOVED***";
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_API_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_URL = "https://image.tmdb.org/t/p";
 

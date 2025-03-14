@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # Determine the correct path to your .env file
-env_path = Path(__file__).parents[3] / "credentials.env"
+env_path = Path(__file__).parents[2] / "credentials.env"
 load_dotenv(dotenv_path=env_path)
 
 # Database configuration with safe fallbacks

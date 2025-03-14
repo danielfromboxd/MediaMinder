@@ -24,5 +24,7 @@ dist-ssr
 *.sw?
 
 # Environment variables
+credentials.env
 .env
 **/*.env
+frontend/.env.local
