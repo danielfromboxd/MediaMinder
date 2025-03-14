@@ -93,11 +93,22 @@ const SeriesDetailPage = () => {
   const isTracked = series ? isMediaTracked(series.id, 'tvshow') : false;
   const trackedItem = isTracked ? getTrackedMediaItem(series?.id, 'tvshow') : null;
 
+  // Update this function to explicitly include title
   const handleAddSeries = (status: MediaStatus) => {
     if (!series) return;
     
+    console.log('Adding series:', series);  // Add this debug log
+    
+    console.log('Adding series to tracking with data:', {
+      id: series.id,
+      name: series.name,  // Should contain the series title
+      poster_path: series.poster_path
+    });
+
     addMedia({
       ...series,
+      title: series.title, // Explicitly include title
+      media_id: series.id,
       poster_path: series.posterPath || series.poster_path
     }, 'tvshow', status);
     

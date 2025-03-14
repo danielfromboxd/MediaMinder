@@ -4,7 +4,7 @@ class Media(db.Model):
     __tablename__ = 'media'
     
     id = db.Column(db.Integer, primary_key=True)
-    external_id = db.Column(db.String(50), nullable=False)
+    external_id = db.Column(db.String(50), nullable=False)  # Make sure this is String not Integer
     type = db.Column(db.String(20), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     genre = db.Column(db.String(50))
