@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import SearchInput from '@/components/SearchInput';
@@ -51,6 +50,9 @@ const SeriesPage = () => {
   };
 
   const handleAddShow = (show: TMDBTVShow, status: MediaStatus) => {
+    console.log("Show object:", JSON.stringify(show));
+    console.log("Status:", status);
+    console.log("About to call addMedia with show and status");
     addMedia(show, 'tvshow', status);
     toast({
       title: "TV Show added",

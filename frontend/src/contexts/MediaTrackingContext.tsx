@@ -5,7 +5,7 @@ import { TMDBMovie, TMDBTVShow } from '@/services/tmdbService';
 import { OpenLibraryBook } from '@/services/openLibraryService';
 
 // Media types
-export type MediaType = 'movie' | 'tvshow' | 'book';
+export type MediaType = 'movie' | 'book' | 'tvshow';
 
 // Status types
 export type MediaStatus = 'want_to_view' | 'in_progress' | 'finished';
@@ -116,29 +116,32 @@ export const MediaTrackingProvider = ({ children }: { children: ReactNode }) => 
   ): Promise<boolean> => {
     try {
       setIsLoading(true);
-      console.log("Adding media:", { media, type, status });
+      console.log("➡️ Add Media INPUT:", { media, type, status });
       
-      // Format the media data for the API
+      // Restructure the data to match backend expectations
       const mediaData = {
+        // These are the exact field names expected by the backend
         media_id: type === 'book' ? 
           (media as OpenLibraryBook).key : 
-          (media as TMDBMovie | TMDBTVShow).id.toString(),
+          String((media as TMDBMovie | TMDBTVShow).id),
+        media_type: type === 'tvshow' ? 'series' : type,
+        status: status,
+        
+        // Additional fields needed for new media
         title: type === 'book' ? 
           (media as OpenLibraryBook).title : 
           type === 'movie' ? (media as TMDBMovie).title : 
           (media as TMDBTVShow).name,
-        media_type: type,
-        status: status,
         poster_path: type === 'book' ? 
           `https://covers.openlibrary.org/b/id/${(media as OpenLibraryBook).cover_i}-M.jpg` : 
           `https://image.tmdb.org/t/p/w500${(media as TMDBMovie | TMDBTVShow).poster_path}`
       };
       
-      console.log("Sending to API:", mediaData);
+      console.log("➡️ API Request Data:", JSON.stringify(mediaData));
+      
       const response = await mediaAPI.addMedia(mediaData);
       console.log("API Response:", response);
       
-      // Actually fetch the updated list to ensure we have fresh data
       const updatedMedia = await mediaAPI.getUserMedia();
       console.log("Updated media list:", updatedMedia);
       

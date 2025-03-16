@@ -93,25 +93,20 @@ const SeriesDetailPage = () => {
   const isTracked = series ? isMediaTracked(series.id, 'tvshow') : false;
   const trackedItem = isTracked ? getTrackedMediaItem(series?.id, 'tvshow') : null;
 
-  // Update this function to explicitly include title
-  const handleAddSeries = (status: MediaStatus) => {
-    if (!series) return;
+  // Function to explicitly include title
+  const handleAddSeries = (series: any, status: MediaStatus) => {
+    console.log("Adding series:", series);
     
-    console.log('Adding series:', series);  // Add this debug log
-    
-    console.log('Adding series to tracking with data:', {
-      id: series.id,
-      name: series.name,  // Should contain the series title
-      poster_path: series.poster_path
-    });
-
-    addMedia({
+    // Make sure series has all required fields
+    const seriesData = {
       ...series,
-      title: series.title, // Explicitly include title
-      media_id: series.id,
+      name: series.title || series.name, // Ensure name is available
+      title: series.title || series.name, // Add title explicitly
       poster_path: series.posterPath || series.poster_path
-    }, 'tvshow', status);
+    };
     
+    console.log("Adding series to tracking with data:", seriesData);
+    addMedia(seriesData, 'tvshow', status);
     toast({
       title: "Series added",
       description: `${series.title} has been added to your ${status.replace('_', ' ')} list.`,
@@ -253,21 +248,21 @@ const SeriesDetailPage = () => {
                 <>
                   <Button 
                     className="w-full" 
-                    onClick={() => handleAddSeries('want_to_view')}
+                    onClick={() => handleAddSeries(series, 'want_to_view')}
                   >
                     <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to Watch
                   </Button>
                   <Button 
                     className="w-full"
                     variant="outline"
-                    onClick={() => handleAddSeries('in_progress')}
+                    onClick={() => handleAddSeries(series, 'in_progress')}
                   >
                     Add as Watching
                   </Button>
                   <Button 
                     className="w-full"
                     variant="outline" 
-                    onClick={() => handleAddSeries('finished')}
+                    onClick={() => handleAddSeries(series, 'finished')}
                   >
                     Add as Finished
                   </Button>

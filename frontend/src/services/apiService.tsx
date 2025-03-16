@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { MediaType } from '@/contexts/MediaTrackingContext';
 
 // Create an axios instance with updated configuration
 const api = axios.create({
@@ -23,6 +24,12 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+// Helper function to map the media type to the backend format
+const mapMediaTypeToBackend = (type: string): string => {
+  if (type === 'tvshow') return 'series';
+  return type;
+};
 
 // Authentication API calls
 export const authAPI = {
@@ -65,22 +72,24 @@ export const mediaAPI = {
     }
   },
   
-  addMedia: async (media: {
-    media_id: string | number;
-    title: string;
-    media_type: string;
-    status: string;
-    poster_path?: string;
-    rating?: number;
-    review?: string;
-  }) => {
-    console.log("Calling API: POST /media with data:", media);
+  // Updated addMedia function that accepts a single object but maps the type
+  addMedia: async (mediaData: any) => {
     try {
-      const response = await api.post('/media', media);
-      console.log("API response (addMedia):", response.data);
+      console.log("Raw mediaData received:", JSON.stringify(mediaData));
+      
+      const requestData = {
+        media_id: mediaData.media_id,
+        media_type: mediaData.media_type,
+        status: mediaData.status,
+        title: mediaData.title,
+        poster_path: mediaData.poster_path
+      };
+      
+      console.log("Sending to backend:", JSON.stringify(requestData));
+      const response = await api.post('/media', requestData);
       return response.data;
-    } catch (error: any) {
-      console.error("API error (addMedia):", error.response || error);
+    } catch (error) {
+      console.error("API error (addMedia):", error);
       throw error;
     }
   },

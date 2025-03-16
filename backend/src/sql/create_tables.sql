@@ -3,24 +3,26 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+    password_hash VARCHAR(255) NOT NULL
 );
 
 -- Create Media table
 CREATE TABLE media (
     id SERIAL PRIMARY KEY,
     external_id VARCHAR(50) NOT NULL,
-    type VARCHAR(20) NOT NULL CHECK(type IN ('movie', 'series', 'book')),
+    type VARCHAR(20) NOT NULL,  -- 'movie', 'book', 'series'
     title VARCHAR(255) NOT NULL,
-    genre VARCHAR(50),
+    genre VARCHAR(100),
     release_date DATE,
-    image_url VARCHAR(255),
+    image_url TEXT,
+    -- Movie-specific fields
     director VARCHAR(100),
     runtime INTEGER,
+    -- Series-specific fields
     creator VARCHAR(100),
     number_of_seasons INTEGER,
     episodes_per_season INTEGER,
+    -- Book-specific fields
     author VARCHAR(100),
     page_count INTEGER,
     publisher VARCHAR(100)
