@@ -86,7 +86,7 @@ export const MediaTrackingProvider = ({ children }: { children: ReactNode }) => 
           return {
             id: item.id.toString(),
             mediaId: item.media.external_id,
-            type: item.media.type as MediaType,
+            type: item.media.type === 'series' ? 'tvshow' : item.media.type as MediaType,
             title: item.media.title,
             posterPath: item.media.image_url || null,
             rating: item.rating,

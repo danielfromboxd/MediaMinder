@@ -10,6 +10,7 @@ class User(db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_private = db.Column(db.Boolean, default=True)
     
     # Relationship with user_media items
     user_media = db.relationship('UserMedia', back_populates='user', lazy=True, cascade='all, delete-orphan')
@@ -28,5 +29,6 @@ class User(db.Model):
             'id': self.id,
             'username': self.username,
             'email': self.email,
+            'is_private': self.is_private,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

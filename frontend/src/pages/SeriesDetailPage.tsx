@@ -7,6 +7,7 @@ import { getImageUrl } from '@/services/tmdbService';
 import StarRating from '@/components/StarRating';
 import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { getStatusDisplayText } from '@/utils/statusUtils';
 import {
   Select,
   SelectContent,
@@ -109,7 +110,7 @@ const SeriesDetailPage = () => {
     addMedia(seriesData, 'tvshow', status);
     toast({
       title: "Series added",
-      description: `${series.title} has been added to your ${status.replace('_', ' ')} list.`,
+      description: `${series.title} has been added to your ${getStatusDisplayText(status, 'tvshow')} list.`,
     });
   };
 
@@ -119,7 +120,7 @@ const SeriesDetailPage = () => {
     updateMediaStatus(trackedItem.id, status);
     toast({
       title: "Status updated",
-      description: `Series status has been updated to ${status.replace('_', ' ')}.`,
+      description: `Series status has been updated to ${getStatusDisplayText(status, 'tvshow')}.`,
     });
   };
 

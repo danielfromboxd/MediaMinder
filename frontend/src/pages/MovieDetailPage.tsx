@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
@@ -8,6 +7,7 @@ import { getImageUrl } from '@/services/tmdbService';
 import StarRating from '@/components/StarRating';
 import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { getStatusDisplayText } from '@/utils/statusUtils';
 import {
   Select,
   SelectContent,
@@ -104,7 +104,7 @@ const MovieDetailPage = () => {
     
     toast({
       title: "Movie added",
-      description: `${movie.title} has been added to your ${status.replace('_', ' ')} list.`,
+      description: `${movie.title} has been added to your ${getStatusDisplayText(status, 'movie')} list.`,
     });
   };
 
@@ -114,7 +114,7 @@ const MovieDetailPage = () => {
     updateMediaStatus(trackedItem.id, status);
     toast({
       title: "Status updated",
-      description: `Movie status has been updated to ${status.replace('_', ' ')}.`,
+      description: `Movie status has been updated to ${getStatusDisplayText(status, 'movie')}.`,
     });
   };
 
@@ -216,9 +216,9 @@ const MovieDetailPage = () => {
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="want_to_view">Want to Watch</SelectItem>
-                        <SelectItem value="in_progress">Watching</SelectItem>
-                        <SelectItem value="finished">Watched</SelectItem>
+                        <SelectItem value="want_to_view">Want to watch</SelectItem>
+                        <SelectItem value="in_progress">Currently watching</SelectItem>
+                        <SelectItem value="finished">Finished watching</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -245,14 +245,14 @@ const MovieDetailPage = () => {
                     className="w-full" 
                     onClick={() => handleAddMovie('want_to_view')}
                   >
-                    <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to Watch
+                    <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to watch
                   </Button>
                   <Button 
                     className="w-full"
                     variant="outline"
                     onClick={() => handleAddMovie('in_progress')}
                   >
-                    Add as Watching
+                    Add as Currently watching
                   </Button>
                   <Button 
                     className="w-full"

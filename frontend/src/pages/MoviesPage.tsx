@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import SearchInput from '@/components/SearchInput';
@@ -11,6 +10,7 @@ import { getImageUrl, TMDBMovie } from '@/services/tmdbService';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
 import { toast } from '@/components/ui/use-toast';
 import StarRating from '@/components/StarRating';
+import { getStatusDisplayText } from '@/utils/statusUtils';
 import { 
   Select,
   SelectContent,
@@ -66,7 +66,7 @@ const MoviesPage = () => {
     addMedia(movie, 'movie', status);
     toast({
       title: "Movie added",
-      description: `${movie.title} has been added to your ${status.replace('_', ' ')} list.`,
+      description: `${movie.title} has been added to your ${getStatusDisplayText(status, 'movie')} list.`,
     });
   };
 
@@ -74,7 +74,7 @@ const MoviesPage = () => {
     updateMediaStatus(movieId, status);
     toast({
       title: "Status updated",
-      description: `Movie status has been updated to ${status.replace('_', ' ')}.`,
+      description: `Movie status has been updated to ${getStatusDisplayText(status, 'movie')}.`,
     });
   };
 
@@ -132,8 +132,8 @@ const MoviesPage = () => {
         {data && data.results.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {data.results.map((movie) => {
-              const isTracked = isMediaTracked(movie.id, 'movie');
-              const trackedItem = isTracked ? getTrackedMediaItem(movie.id, 'movie') : null;
+              const isTracked = isMediaTracked(String(movie.id), 'movie');
+              const trackedItem = isTracked ? getTrackedMediaItem(String(movie.id), 'movie') : null;
               
               return (
                 <div 
@@ -156,7 +156,7 @@ const MoviesPage = () => {
                     
                     {trackedItem && (
                       <div className="absolute top-2 right-2">
-                        <MediaStatusBadge status={trackedItem.status} />
+                        <MediaStatusBadge status={trackedItem.status} mediaType="movie" />
                       </div>
                     )}
                   </div>
@@ -284,9 +284,9 @@ const MoviesPage = () => {
                                 <SelectValue placeholder="Select status" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="want_to_view">Want to View</SelectItem>
-                                <SelectItem value="in_progress">In Progress</SelectItem>
-                                <SelectItem value="finished">Finished</SelectItem>
+                                <SelectItem value="want_to_view">Want to Watch</SelectItem>
+                                <SelectItem value="in_progress">Currently Watching</SelectItem>
+                                <SelectItem value="finished">Finished Watching</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -318,21 +318,21 @@ const MoviesPage = () => {
                             className="w-full" 
                             onClick={() => handleAddMovie(movieDetails, 'want_to_view')}
                           >
-                            <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to View
+                            <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to Watch
                           </Button>
                           <Button 
                             className="w-full"
                             variant="outline"
                             onClick={() => handleAddMovie(movieDetails, 'in_progress')}
                           >
-                            Add to In Progress
+                            Add as Currently Watching
                           </Button>
                           <Button 
                             className="w-full"
                             variant="outline" 
                             onClick={() => handleAddMovie(movieDetails, 'finished')}
                           >
-                            Add as Finished
+                            Add as Watched
                           </Button>
                         </>
                       )}

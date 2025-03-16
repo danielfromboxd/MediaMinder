@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,27 +14,32 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { userAPI } from '@/services/apiService';
+import { useNavigate } from 'react-router-dom';
 
 const SettingsPage = () => {
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, logout, updateUser } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPrivateAccount, setIsPrivateAccount] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Initialize form with user data if logged in
     if (isLoggedIn && user) {
-      setUsername(user.name || '');
+      setUsername(user.username || '');
       setEmail(user.email || '');
+      setIsPrivateAccount(user.is_private !== undefined ? user.is_private : true);
     }
   }, [isLoggedIn, user]);
 
-  const handleUpdate = (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -50,37 +54,96 @@ const SettingsPage = () => {
     
     setIsUpdating(true);
     
-    // Simulate update process
-    setTimeout(() => {
-      setIsUpdating(false);
+    try {
+      // Prepare data payload
+      const userData = {
+        username,
+        email,
+        ...(password ? { password } : {}),
+        is_private: isPrivateAccount
+      };
+      
+      // Call API to update profile
+      const response = await userAPI.updateProfile(userData);
+      
+      // Update local user context
+      updateUser(response.user);
+      
       toast({
         title: "Settings updated",
         description: "Your account information has been updated successfully.",
       });
+      
+      // Clear password fields
       setPassword('');
       setConfirmPassword('');
-    }, 1000);
-  };
-
-  const handleDeleteAccount = () => {
-    // Simulate account deletion
-    setTimeout(() => {
-      setShowDeleteDialog(false);
+    } catch (error: any) {
       toast({
-        title: "Account deleted",
-        description: "Your account has been deleted. You will be redirected to the login page.",
+        title: "Update failed",
+        description: error.response?.data?.error || "Failed to update your settings.",
         variant: "destructive"
       });
-      // In a real app, you would redirect to login page or trigger logout
-    }, 1000);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
-  const handlePrivacyToggle = () => {
-    setIsPrivateAccount(!isPrivateAccount);
-    toast({
-      title: "Privacy setting updated",
-      description: `Your account is now ${!isPrivateAccount ? 'private' : 'public'}.`,
-    });
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    
+    try {
+      await userAPI.deleteAccount();
+      
+      toast({
+        title: "Account deleted",
+        description: "Your account has been deleted.",
+        variant: "destructive"
+      });
+      
+      // Logout and redirect
+      logout();
+      navigate('/login');
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.response?.data?.error || "Failed to delete your account.",
+        variant: "destructive"
+      });
+      setShowDeleteDialog(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handlePrivacyToggle = async () => {
+    try {
+      const newPrivacySetting = !isPrivateAccount;
+      
+      await userAPI.updateProfile({
+        is_private: newPrivacySetting
+      });
+      
+      setIsPrivateAccount(newPrivacySetting);
+      
+      toast({
+        title: "Privacy setting updated",
+        description: `Your account is now ${newPrivacySetting ? 'private' : 'public'}.`,
+      });
+      
+      // Update user context
+      if (user) {
+        updateUser({
+          ...user,
+          is_private: newPrivacySetting
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.response?.data?.error || "Failed to update privacy settings.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -208,8 +271,12 @@ const SettingsPage = () => {
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteAccount}>
-              Delete Account
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Account"}
             </Button>
           </DialogFooter>
         </DialogContent>

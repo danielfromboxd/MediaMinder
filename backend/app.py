@@ -29,6 +29,10 @@ with app.app_context():
     except Exception as e:
         logger.error(f"Error creating database tables: {str(e)}")
 
+# Register routes
+from src.routes.user_controller import user_bp
+app.register_blueprint(user_bp, url_prefix='/api/user')
+
 # Add error handler to ensure CORS headers are added to error responses
 @app.errorhandler(500)
 def handle_500_error(e):

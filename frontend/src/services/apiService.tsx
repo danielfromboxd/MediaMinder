@@ -130,3 +130,36 @@ export const mediaAPI = {
     }
   },
 };
+
+// Add this after your other API exports
+export const userAPI = {
+  getProfile: async () => {
+    try {
+      const response = await api.get('/user/profile');
+      return response.data.user;
+    } catch (error: any) {
+      console.error("API error (getProfile):", error.response || error);
+      throw error;
+    }
+  },
+  
+  updateProfile: async (userData: any) => {
+    try {
+      const response = await api.put('/user/profile', userData);
+      return response.data;
+    } catch (error: any) {
+      console.error("API error (updateProfile):", error.response || error);
+      throw error;
+    }
+  },
+  
+  deleteAccount: async () => {
+    try {
+      const response = await api.delete('/user/account');
+      return response.data;
+    } catch (error: any) {
+      console.error("API error (deleteAccount):", error.response || error);
+      throw error;
+    }
+  }
+};

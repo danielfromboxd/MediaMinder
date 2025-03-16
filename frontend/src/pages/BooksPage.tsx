@@ -8,6 +8,7 @@ import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
 import { toast } from '@/components/ui/use-toast';
 import StarRating from '@/components/StarRating';
 import { PlusCircle, Trash2 } from "lucide-react";
+import { getStatusDisplayText } from '@/utils/statusUtils';
 import { 
   Dialog, 
   DialogContent, 
@@ -52,7 +53,7 @@ const BooksPage = () => {
   };
 
   const handleAddBook = (book: any, status: MediaStatus) => {
-    // For books, we need to modify the book object to include cover_i as poster_path for tracking
+    // Modify the book object to include cover_i as poster_path for tracking
     const bookWithPoster = {
       ...book,
       poster_path: book.cover_i
@@ -60,7 +61,7 @@ const BooksPage = () => {
     addMedia(bookWithPoster, 'book', status);
     toast({
       title: "Book added",
-      description: `${book.title} has been added to your ${status.replace('_', ' ')} list.`,
+      description: `${book.title} has been added to your ${getStatusDisplayText(status, 'book')} list.`,
     });
   };
 
@@ -68,7 +69,7 @@ const BooksPage = () => {
     updateMediaStatus(bookId, status);
     toast({
       title: "Status updated",
-      description: `Book status has been updated to ${status.replace('_', ' ')}.`,
+      description: `Book status has been updated to ${getStatusDisplayText(status, 'book')}.`,
     });
   };
 
@@ -150,7 +151,7 @@ const BooksPage = () => {
                     
                     {trackedItem && (
                       <div className="absolute top-2 right-2">
-                        <MediaStatusBadge status={trackedItem.status} />
+                        <MediaStatusBadge status={trackedItem.status} mediaType="book" />
                       </div>
                     )}
                   </div>

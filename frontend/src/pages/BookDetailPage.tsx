@@ -7,6 +7,7 @@ import { getImageUrl } from '@/services/tmdbService';
 import StarRating from '@/components/StarRating';
 import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { getStatusDisplayText } from '@/utils/statusUtils';
 import {
   Select,
   SelectContent,
@@ -99,7 +100,7 @@ const BookDetailPage = () => {
     
     toast({
       title: "Book added",
-      description: `${book.title} has been added to your ${status.replace('_', ' ')} list.`,
+      description: `${book.title} has been added to your ${getStatusDisplayText(status, 'book')} list.`,
     });
   };
 
@@ -109,7 +110,7 @@ const BookDetailPage = () => {
     updateMediaStatus(trackedItem.id, status);
     toast({
       title: "Status updated",
-      description: `Book status has been updated to ${status.replace('_', ' ')}.`,
+      description: `Book status has been updated to ${getStatusDisplayText(status, 'book')}.`,
     });
   };
 

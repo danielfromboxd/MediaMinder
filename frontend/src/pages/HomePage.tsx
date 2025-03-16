@@ -329,7 +329,7 @@ const HomePage = () => {
         
         {isLoggedIn ? (
           <>
-            {renderMediaList(wantToViewMedia, "Want to View", <EyeIcon className="h-6 w-6 text-blue-500" />)}
+            {renderMediaList(wantToViewMedia, "Want to Read/Watch", <EyeIcon className="h-6 w-6 text-blue-500" />)}
             {renderMediaList(inProgressMedia, "In Progress", <BookOpenIcon className="h-6 w-6 text-amber-500" />)}
             {renderMediaList(finishedMedia, "Finished", <CheckIcon className="h-6 w-6 text-green-500" />)}
             

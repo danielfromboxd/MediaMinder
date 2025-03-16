@@ -10,6 +10,7 @@ import { getImageUrl, TMDBTVShow } from '@/services/tmdbService';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
 import { toast } from '@/components/ui/use-toast';
 import StarRating from '@/components/StarRating';
+import { getStatusDisplayText } from '@/utils/statusUtils';
 import { 
   Select,
   SelectContent,
@@ -56,7 +57,7 @@ const SeriesPage = () => {
     addMedia(show, 'tvshow', status);
     toast({
       title: "TV Show added",
-      description: `${show.name} has been added to your ${status.replace('_', ' ')} list.`,
+      description: `${show.name} has been added to your ${getStatusDisplayText(status, 'tvshow')} list.`,
     });
   };
 
@@ -64,7 +65,7 @@ const SeriesPage = () => {
     updateMediaStatus(showId, status);
     toast({
       title: "Status updated",
-      description: `TV Show status has been updated to ${status.replace('_', ' ')}.`,
+      description: `TV Show status has been updated to ${getStatusDisplayText(status, 'tvshow')}.`,
     });
   };
 
@@ -122,8 +123,8 @@ const SeriesPage = () => {
         {data && data.results.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {data.results.map((series) => {
-              const isTracked = isMediaTracked(series.id, 'tvshow');
-              const trackedItem = isTracked ? getTrackedMediaItem(series.id, 'tvshow') : null;
+              const isTracked = isMediaTracked(String(series.id), 'tvshow');
+              const trackedItem = isTracked ? getTrackedMediaItem(String(series.id), 'tvshow') : null;
               
               return (
                 <div 
@@ -146,7 +147,7 @@ const SeriesPage = () => {
                     
                     {trackedItem && (
                       <div className="absolute top-2 right-2">
-                        <MediaStatusBadge status={trackedItem.status} />
+                        <MediaStatusBadge status={trackedItem.status} mediaType="tvshow" />
                       </div>
                     )}
                   </div>
@@ -274,9 +275,9 @@ const SeriesPage = () => {
                                 <SelectValue placeholder="Select status" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="want_to_view">Want to View</SelectItem>
-                                <SelectItem value="in_progress">In Progress</SelectItem>
-                                <SelectItem value="finished">Finished</SelectItem>
+                                <SelectItem value="want_to_view">Want to Watch</SelectItem>
+                                <SelectItem value="in_progress">Currently Watching</SelectItem>
+                                <SelectItem value="finished">Finished Watching</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -308,21 +309,21 @@ const SeriesPage = () => {
                             className="w-full" 
                             onClick={() => handleAddShow(showDetails, 'want_to_view')}
                           >
-                            <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to View
+                            <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to Watch
                           </Button>
                           <Button 
                             className="w-full"
                             variant="outline"
                             onClick={() => handleAddShow(showDetails, 'in_progress')}
                           >
-                            Add to In Progress
+                            Add as Currently Watching
                           </Button>
                           <Button 
                             className="w-full"
                             variant="outline" 
                             onClick={() => handleAddShow(showDetails, 'finished')}
                           >
-                            Add as Finished
+                            Add as Watched
                           </Button>
                         </>
                       )}

@@ -5,6 +5,7 @@ interface User {
   id: number;
   username: string;
   email: string;
+  is_private?: boolean; // Add this property
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   signup: (username: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   clearError: () => void;
+  updateUser: (userData: Partial<User>) => void; // Add this method
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -106,8 +108,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      return { ...prevUser, ...userData };
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn, isLoading, error, login, signup, logout, clearError }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, isLoading, error, login, signup, logout, clearError, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

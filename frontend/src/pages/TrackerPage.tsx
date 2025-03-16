@@ -1,7 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
-import { useMediaTracking, TrackedMedia } from '@/contexts/MediaTrackingContext';
+import { useMediaTracking, TrackedMedia, MediaStatus } from '@/contexts/MediaTrackingContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getImageUrl } from '@/services/tmdbService';
 import { getBookCoverUrl } from '@/services/openLibraryService';
@@ -12,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Book, Tv, Film, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { getStatusDisplayText } from '@/utils/statusUtils';
 
 const TrackerPage = () => {
   const { isLoggedIn } = useAuth();
@@ -172,11 +172,17 @@ const TrackerPage = () => {
                               <select 
                                 className="text-sm p-1 border rounded"
                                 value={media.status}
-                                onChange={(e) => handleStatusChange(media.id, e.target.value)}
+                                onChange={(e) => handleStatusChange(media.id, e.target.value as MediaStatus)}
                               >
-                                <option value="want_to_view">Want to View</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="finished">Finished</option>
+                                <option value="want_to_view">
+                                  {getStatusDisplayText('want_to_view', media.type)}
+                                </option>
+                                <option value="in_progress">
+                                  {getStatusDisplayText('in_progress', media.type)}
+                                </option>
+                                <option value="finished">
+                                  {getStatusDisplayText('finished', media.type)}
+                                </option>
                               </select>
                             </div>
                             
