@@ -32,8 +32,8 @@ interface MediaTrackingContextType {
   updateMediaRating: (mediaId: string, rating: number) => Promise<boolean>;
   removeMedia: (mediaId: string) => Promise<boolean>;
   getMediaByStatus: (status: MediaStatus) => TrackedMedia[];
-  isMediaTracked: (originalId: number | string, type: MediaType) => boolean;
-  getTrackedMediaItem: (originalId: number | string, type: MediaType) => TrackedMedia | null;
+  isMediaTracked: (originalId: number | string | undefined, type: MediaType) => boolean;
+  getTrackedMediaItem: (originalId: number | string | undefined, type: MediaType) => TrackedMedia | null;
   getAllMedia: () => TrackedMedia[];
 }
 
@@ -244,12 +244,38 @@ export const MediaTrackingProvider = ({ children }: { children: ReactNode }) => 
     return trackedMedia.filter(item => item.status === status);
   };
 
-  const isMediaTracked = (originalId: number | string, type: MediaType) => {
-    return trackedMedia.some(item => item.mediaId.toString() === originalId.toString() && item.type === type);
+  const isMediaTracked = (originalId: number | string | undefined, type: MediaType) => {
+    // Return false if ID is undefined or null
+    if (originalId === undefined || originalId === null) {
+      return false;
+    }
+    
+    // Handle IDs that might be formatted as "type_id" (like "book_123")
+    let idToCheck = originalId.toString();
+    if (typeof originalId === 'string' && originalId.includes('_')) {
+      idToCheck = originalId.split('_')[1];
+    }
+    
+    return trackedMedia.some(item => 
+      item.mediaId.toString() === idToCheck.toString() && 
+      item.type === type
+    );
   };
 
-  const getTrackedMediaItem = (originalId: number | string, type: MediaType) => {
-    return trackedMedia.find(item => item.mediaId.toString() === originalId.toString() && item.type === type) || null;
+  const getTrackedMediaItem = (originalId: number | string | undefined, type: MediaType) => {
+    if (originalId === undefined || originalId === null) {
+      return null;
+    }
+
+    let idToCheck = originalId.toString();
+    if (typeof originalId === 'string' && originalId.includes('_')) {
+      idToCheck = originalId.split('_')[1];
+    }
+
+    return trackedMedia.find(item => 
+      item.mediaId.toString() === idToCheck.toString() && 
+      item.type === type
+    ) || null;
   };
 
   const getAllMedia = () => {

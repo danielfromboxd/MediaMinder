@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OpenLibraryBook } from '@/services/openLibraryService';
+import { OpenLibraryBook, getBookDetails, getBookCoverUrl } from '@/services/openLibraryService';
 
 const BookDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,56 +35,69 @@ const BookDetailPage = () => {
   } = useMediaTracking();
 
   useEffect(() => {
-    // Find the book in our tracked media
-    const allMedia = getAllMedia();
-    // Accessing the mediaId property instead of key in the comparison:
-    const trackedBook = allMedia.find(
-      media => media.type === 'book' && 
-      (media.id === id || media.mediaId === id)
-    );
-    
-    if (trackedBook) {
-      setBook(trackedBook);
-      setLoading(false);
-    } else {
-      // For non-tracked books or popular items, create a placeholder
-      const popularBooks = [
-        {
-          key: '/works/OL28447W',
-          title: 'The Lord of the Rings',
-          type: 'book',
-          cover_edition_key: 'OL33929523M',
-          authors: [{ key: '/authors/OL23919A', name: 'J.R.R. Tolkien' }],
-        },
-        {
-          key: '/works/OL1567994W',
-          title: 'Pride and Prejudice',
-          type: 'book',
-          cover_edition_key: 'OL17242841M',
-          authors: [{ key: '/authors/OL23699A', name: 'Jane Austen' }],
-        },
-        {
-          key: '/works/OL12429287W',
-          title: 'To Kill a Mockingbird',
-          type: 'book',
-          cover_edition_key: 'OL35583357M',
-          authors: [{ key: '/authors/OL34182A', name: 'Harper Lee' }],
-        }
-      ];
+    const fetchBookDetails = async () => {
+      // Find the book in our tracked media
+      const allMedia = getAllMedia();
+      let decodedId = id;
       
-      const popularBook = popularBooks.find(b => 
-        b.key === id || 
-        b.cover_edition_key === id
+      // Handle URL-encoded IDs from OpenLibrary (like %2Fworks%2FOL123W)
+      if (id && id.includes('%')) {
+        decodedId = decodeURIComponent(id);
+      }
+      
+      // Try multiple ways to match the book
+      const trackedBook = allMedia.find(media => 
+        media.type === 'book' && (
+          media.mediaId.toString() === id || 
+          media.mediaId.toString() === decodedId ||
+          (media.mediaId.toString().includes('/') && media.mediaId.toString().split('/').pop() === id) ||
+          media.id === id
+        )
       );
       
-      if (popularBook) {
-        setBook(popularBook);
+      if (trackedBook) {
+        // Properly format the book object with the ID that isMediaTracked expects
+        setBook({
+          ...trackedBook,
+          key: trackedBook.mediaId
+        });
         setLoading(false);
       } else {
-        setError("Book not found");
-        setLoading(false);
+        // FETCH FROM API DIRECTLY
+        try {
+          // Clean up the ID
+          let bookId = id;
+          
+          // Handle book_OL12345W format from New This Quarter
+          if (typeof bookId === 'string' && bookId.includes('book_')) {
+            bookId = bookId.replace('book_', '');
+          }
+          
+          // If it looks like an OpenLibrary ID without the /works/ prefix, add it back
+          if (typeof bookId === 'string' && !bookId.includes('/') && bookId.match(/^OL\d+W$/)) {
+            bookId = `/works/${bookId}`;
+            console.log("Reformatted to OpenLibrary path:", bookId);
+          }
+          
+          console.log("Fetching book details for:", bookId);
+          const bookDetails = await getBookDetails(bookId);
+          
+          if (bookDetails) {
+            setBook(bookDetails);
+            setLoading(false);
+          } else {
+            setError("Book not found");
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error("Error fetching book details:", error);
+          setError("Failed to load book details");
+          setLoading(false);
+        }
       }
-    }
+    };
+    
+    fetchBookDetails();
   }, [id, getAllMedia]);
 
   const isTracked = book ? isMediaTracked(book.key, 'book') : false;
@@ -93,10 +106,23 @@ const BookDetailPage = () => {
   const handleAddBook = (status: MediaStatus) => {
     if (!book) return;
     
-    addMedia({
+    const bookData = {
       ...book,
-      poster_path: book.cover_edition_key
-    }, 'book', status);
+      poster_path: book.cover_i || book.cover_edition_key
+    };
+    
+    const success = addMedia(bookData, 'book', status);
+    
+    // Update the local state immediately to reflect tracked status
+    if (success) {
+      // Keep the current book object but mark it as tracked
+      setBook({...book}); // Force a re-render
+      
+      // Refresh page without actually navigating away
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    }
     
     toast({
       title: "Book added",

@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { Link } from 'react-router-dom';
-import { Book, Tv, Film, Search, EyeIcon, BookOpenIcon, CheckIcon, Sparkles, TrendingUp } from 'lucide-react';
+import { Book, Tv, Film, Search, EyeIcon, BookOpenIcon, CheckIcon, Sparkles, TrendingUp, Clock } from 'lucide-react';
 import { useMediaTracking } from '@/contexts/MediaTrackingContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getImageUrl } from '@/services/tmdbService';
-import { getBookCoverUrl } from '@/services/openLibraryService';
+import { getImageUrl, getTrendingMovies, getTrendingTVShows, getRecentMovies, getRecentTVShows } from '@/services/tmdbService';
+import { getBookCoverUrl, getTrendingBooks, getRecentBooks } from '@/services/openLibraryService';
 import MediaStatusBadge from '@/components/MediaStatusBadge';
 import StarRating from '@/components/StarRating';
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
 
 const HomePage = () => {
   const { isLoggedIn, user } = useAuth();
@@ -70,50 +73,85 @@ const HomePage = () => {
       .slice(0, 4);
   };
 
-  const popularThisWeek = [
-    {
-      id: 'pop-1',
-      title: 'Dune: Part Two',
-      type: 'movie',
-      posterPath: '/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg',
-      popularity: 9.9
-    },
-    {
-      id: 'pop-2',
-      title: 'House of the Dragon',
-      type: 'tvshow',
-      posterPath: '/z2yahl2uefxDCl0nogcRBstwruJ.jpg',
-      popularity: 9.8
-    },
-    {
-      id: 'pop-3',
-      title: 'Fourth Wing',
-      type: 'book',
-      posterPath: '16004483',
-      popularity: 9.7
-    },
-    {
-      id: 'pop-4',
-      title: 'Fallout',
-      type: 'tvshow',
-      posterPath: '/6oTAAGhBJxaYKh3TswDVRLdKtIo.jpg',
-      popularity: 9.6
-    },
-    {
-      id: 'pop-5',
-      title: 'The Three-Body Problem',
-      type: 'book',
-      posterPath: '20564245',
-      popularity: 9.5
-    },
-    {
-      id: 'pop-6',
-      title: 'Deadpool & Wolverine',
-      type: 'movie',
-      posterPath: '/yNLdJrKCGHCWtkIKIz8ejGFxNyZ.jpg',
-      popularity: 9.4
-    }
-  ];
+  // Add state for popular media
+  const [popularItems, setPopularItems] = useState<any[]>([]);
+  const [isLoadingPopular, setIsLoadingPopular] = useState(true);
+
+  // Fetch new content when component mounts
+  useEffect(() => {
+    const fetchNewItems = async () => {
+      setIsLoadingPopular(true);
+      try {
+        // Get recently released/new media
+        const [moviesData, showsData, booksData] = await Promise.all([
+          getRecentMovies(),
+          getRecentTVShows(),
+          getRecentBooks()
+        ]);
+        
+        // Format movies (take top 3)
+        const formattedMovies = moviesData.slice(0, 3).map(movie => ({
+          id: `movie_${movie.id}`,
+          title: movie.title,
+          type: 'movie',
+          mediaType: 'movie',
+          imageUrl: getImageUrl(movie.poster_path),
+          year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
+        }));
+        
+        // Format TV shows (take top 2)
+        const formattedShows = showsData.slice(0, 2).map(show => ({
+          id: `tvshow_${show.id}`,
+          title: show.name,
+          type: 'tvshow',
+          mediaType: 'tvshow',
+          imageUrl: getImageUrl(show.poster_path),
+          year: show.first_air_date ? new Date(show.first_air_date).getFullYear() : null,
+        }));
+        
+        // Format books (take top 2)
+        const formattedBooks = booksData.slice(0, 2).map(book => {
+          // Get the work ID (for details page navigation)
+          let bookId = '';
+          if (book.key) {
+            bookId = book.key.split('/').pop() || '';
+          }
+          
+          return {
+            id: `book_${bookId}`,
+            title: book.title,
+            type: 'book',
+            mediaType: 'book',
+            imageUrl: getBookCoverUrl(book, "M"),  // Use our improved function
+            year: book.first_publish_year,
+            
+            // Store all possible cover sources for later fallbacks
+            cover_i: book.cover_i,
+            cover_edition_key: book.cover_edition_key,
+            // Store book.key for later OLID extraction if needed
+            key: book.key
+          };
+        });
+        
+        // Combine all items and sort by newest first
+        const combined = [...formattedMovies, ...formattedShows, ...formattedBooks]
+          .sort((a, b) => {
+            if (!a.year) return 1;
+            if (!b.year) return -1;
+            return b.year - a.year;
+          });
+        
+        setPopularItems(combined.slice(0, 6));
+      } catch (error) {
+        console.error('Failed to fetch new items:', error);
+        setPopularItems([]);
+      } finally {
+        setIsLoadingPopular(false);
+      }
+    };
+    
+    fetchNewItems();
+  }, []);
 
   const recommendedMedia = isLoggedIn ? generateRecommendedMedia() : [];
 
@@ -241,46 +279,65 @@ const HomePage = () => {
         
         <div className="mt-8">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-6 w-6 text-red-500" />
-            <h2 className="text-2xl font-semibold">Popular This Week</h2>
+            <Clock className="h-6 w-6 text-red-500" />
+            <h2 className="text-2xl font-semibold">New This Quarter</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {popularThisWeek.map(media => (
-              <Link 
-                key={media.id} 
-                to={getMediaLink(media)}
-                className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="relative h-40 bg-gray-100 flex items-center justify-center">
-                  {media.posterPath ? (
-                    <img 
-                      src={getMediaImageSrc(media)} 
-                      alt={media.title}
-                      className="h-full object-cover w-full"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.onerror = null;
-                        target.src = 'https://via.placeholder.com/150?text=No+Image';
-                      }}
-                    />
-                  ) : (
-                    <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
-                  )}
-                  <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                    {media.popularity.toFixed(1)}
-                  </div>
-                </div>
-                <div className="p-3">
-                  <h3 className="font-semibold text-md line-clamp-1">{media.title}</h3>
-                  <div className="mt-1 flex items-center justify-between">
-                    <div className="text-xs flex items-center">
-                      {media.type === 'book' ? 'Book' : media.type === 'movie' ? 'Movie' : 'TV Show'}
+          {isLoadingPopular ? (
+            // Show loading skeleton while data is being fetched
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="h-48 w-full" />
+                  <CardContent className="p-4">
+                    <Skeleton className="h-4 w-3/4 mb-2" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : popularItems.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {popularItems.map(media => (
+                <Link 
+                  key={media.id} 
+                  to={getMediaLink(media)}
+                  className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="relative h-40 bg-gray-100 flex items-center justify-center">
+                    {media.imageUrl ? (
+                      <img 
+                        src={media.imageUrl} 
+                        alt={media.title}
+                        className="h-full object-cover w-full"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.onerror = null;
+                          target.src = 'https://via.placeholder.com/150?text=No+Image';
+                        }}
+                      />
+                    ) : (
+                      <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
+                    )}
+                    {/* Replace popularity badge with release year */}
+                    <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                      {media.year || 'New'}
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                  <div className="p-3">
+                    <h3 className="font-semibold text-md line-clamp-1">{media.title}</h3>
+                    <div className="mt-1 flex items-center justify-between">
+                      <div className="text-xs flex items-center">
+                        {media.type === 'book' ? 'Book' : media.type === 'movie' ? 'Movie' : 'TV Show'}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            // If API calls failed, show a message
+            <p className="text-gray-500">Unable to load popular content. Please try again later.</p>
+          )}
         </div>
         
         {isLoggedIn && (
@@ -307,7 +364,7 @@ const HomePage = () => {
                       <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
                     )}
                     {media.popularity && (
-                      <div className="absolute top-2 right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
+                      <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
                         {media.popularity.toFixed(1)}
                       </div>
                     )}
@@ -330,7 +387,7 @@ const HomePage = () => {
         {isLoggedIn ? (
           <>
             {renderMediaList(wantToViewMedia, "Want to Read/Watch", <EyeIcon className="h-6 w-6 text-blue-500" />)}
-            {renderMediaList(inProgressMedia, "In Progress", <BookOpenIcon className="h-6 w-6 text-amber-500" />)}
+            {renderMediaList(inProgressMedia, "In Progress", <BookOpenIcon className="h-6 w-6 text-purple-500" />)}
             {renderMediaList(finishedMedia, "Finished", <CheckIcon className="h-6 w-6 text-green-500" />)}
             
             {wantToViewMedia.length === 0 && inProgressMedia.length === 0 && finishedMedia.length === 0 && recommendedMedia.length === 0 && (

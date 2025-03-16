@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import { Button } from '@/components/ui/button';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
-import { getImageUrl } from '@/services/tmdbService';
+import { getImageUrl, getMovieDetails } from '@/services/tmdbService';
 import StarRating from '@/components/StarRating';
 import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -34,61 +34,59 @@ const MovieDetailPage = () => {
   } = useMediaTracking();
 
   useEffect(() => {
-    // Find the movie in our tracked media
-    const allMedia = getAllMedia();
-    const trackedMovie = allMedia.find(
-      media => media.type === 'movie' && 
-      (media.id === id || media.id === `movie_${id}`)
-    );
-    
-    if (trackedMovie) {
-      setMovie(trackedMovie);
-      setLoading(false);
-    } else {
-      // For non-tracked movies or popular items, create a placeholder
-      const popularMovies = [
-        {
-          id: 'pop-1',
-          title: 'Dune: Part Two',
-          type: 'movie',
-          posterPath: '/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg',
-          popularity: 9.9,
-          release_date: '2024-03-01',
-          overview: 'Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the universe, Paul endeavors to prevent a terrible future only he can foresee.'
-        },
-        {
-          id: 'pop-6',
-          title: 'Deadpool & Wolverine',
-          type: 'movie',
-          posterPath: '/yNLdJrKCGHCWtkIKIz8ejGFxNyZ.jpg',
-          popularity: 9.4,
-          release_date: '2024-07-26',
-          overview: 'Wolverine is recovering from his injuries when he is approached by Deadpool to join forces to defeat a common enemy.'
-        },
-        {
-          id: 'rec-3',
-          title: 'Inception',
-          type: 'movie',
-          posterPath: '/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg',
-          popularity: 9.7,
-          release_date: '2010-07-16',
-          overview: 'Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets is offered a chance to regain his old life as payment for a task considered to be impossible: "inception", the implantation of another person\'s idea into a target\'s subconscious.'
-        }
-      ];
+    const fetchMovieDetails = async () => {
+      // Find the movie in our tracked media
+      const allMedia = getAllMedia();
       
-      const popularMovie = popularMovies.find(m => 
-        m.id === id || 
-        m.posterPath === id
+      // First try to find the movie in tracked media using multiple ID formats
+      const trackedMovie = allMedia.find(
+        media => media.type === 'movie' && (
+          media.mediaId.toString() === id || 
+          media.mediaId.toString() === `movie_${id}` || 
+          media.id === id
+        )
       );
       
-      if (popularMovie) {
-        setMovie(popularMovie);
+      if (trackedMovie) {
+        // Ensure the movie object has the correct ID format
+        setMovie({
+          ...trackedMovie,
+          id: trackedMovie.mediaId
+        });
         setLoading(false);
       } else {
-        setError("Movie not found");
-        setLoading(false);
+        // FETCH FROM API DIRECTLY
+        try {
+          // Clean up the ID
+          let movieId = id;
+          
+          // Handle movie_123 format from New This Quarter
+          if (typeof id === 'string' && id.includes('movie_')) {
+            movieId = id.replace('movie_', '');
+          }
+          
+          console.log("Fetching movie details for:", movieId);
+          const movieDetails = await getMovieDetails(Number(movieId));
+          
+          if (movieDetails) {
+            setMovie({
+              ...movieDetails,
+              type: 'movie'
+            });
+            setLoading(false);
+          } else {
+            setError("Movie not found");
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error("Error fetching movie details:", error);
+          setError("Failed to load movie details");
+          setLoading(false);
+        }
       }
-    }
+    };
+    
+    fetchMovieDetails();
   }, [id, getAllMedia]);
 
   const isTracked = movie ? isMediaTracked(movie.id, 'movie') : false;
@@ -97,10 +95,23 @@ const MovieDetailPage = () => {
   const handleAddMovie = (status: MediaStatus) => {
     if (!movie) return;
     
-    addMedia({
+    const movieData = {
       ...movie,
       poster_path: movie.posterPath || movie.poster_path
-    }, 'movie', status);
+    };
+    
+    const success = addMedia(movieData, 'movie', status);
+    
+    // Update the local state immediately to reflect tracked status
+    if (success) {
+      // Keep the current movie object but mark it as tracked
+      setMovie({...movie}); // Force a re-render
+      
+      // Refresh page without actually navigating away
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    }
     
     toast({
       title: "Movie added",

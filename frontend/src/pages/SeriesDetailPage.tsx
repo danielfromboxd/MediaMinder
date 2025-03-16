@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import { Button } from '@/components/ui/button';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
-import { getImageUrl } from '@/services/tmdbService';
+import { getImageUrl, getTVShowDetails } from '@/services/tmdbService';
 import StarRating from '@/components/StarRating';
 import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -34,61 +34,59 @@ const SeriesDetailPage = () => {
   } = useMediaTracking();
 
   useEffect(() => {
-    // Find the series in our tracked media
-    const allMedia = getAllMedia();
-    const trackedSeries = allMedia.find(
-      media => media.type === 'tvshow' && 
-      (media.id === id || media.id === `tvshow_${id}`)
-    );
-    
-    if (trackedSeries) {
-      setSeries(trackedSeries);
-      setLoading(false);
-    } else {
-      // For non-tracked series or popular items, create a placeholder
-      const popularSeriesData = [
-        {
-          id: 'pop-2',
-          title: 'House of the Dragon',
-          type: 'tvshow',
-          posterPath: '/z2yahl2uefxDCl0nogcRBstwruJ.jpg',
-          popularity: 9.8,
-          first_air_date: '2022-08-21',
-          overview: 'The prequel series finds the Targaryen dynasty at the absolute apex of its power, with more than 15 dragons under their yoke. Most empires—real and imagined—crumble from such heights. In the case of the Targaryens, their slow fall begins almost 193 years before the events of Game of Thrones, when King Viserys Targaryen breaks with a century of tradition by naming his daughter Rhaenyra heir to the Iron Throne. But when Viserys later fathers a son, the court is shocked when Rhaenyra retains her status as his heir, and seeds of division sow friction across the realm.'
-        },
-        {
-          id: 'pop-4',
-          title: 'Fallout',
-          type: 'tvshow',
-          posterPath: '/6oTAAGhBJxaYKh3TswDVRLdKtIo.jpg',
-          popularity: 9.6,
-          first_air_date: '2024-04-11',
-          overview: 'In a retrofuturistic world devastated by nuclear war, a woman must leave the safety of her underground vault to search for her missing father, and is forced to build an unlikely alliance with a bounty hunter who happens to wear an Iron Man helmet.'
-        },
-        {
-          id: 'rec-2',
-          title: 'Brooklyn Nine-Nine',
-          type: 'tvshow',
-          posterPath: '/qYjAdP0n62dJ9WLl8WGeQj7CGPH.jpg',
-          popularity: 9.5,
-          first_air_date: '2013-09-17',
-          overview: 'A single-camera ensemble comedy following the lives of an eclectic group of detectives in a New York precinct, including one slacker who is forced to shape up when he gets a new boss.'
-        }
-      ];
+    const fetchSeriesDetails = async () => {
+      // Find the series in our tracked media
+      const allMedia = getAllMedia();
       
-      const foundSeries = popularSeriesData.find(s => 
-        s.id === id || 
-        s.posterPath === id
+      const trackedSeries = allMedia.find(
+        media => media.type === 'tvshow' && (
+          media.mediaId.toString() === id || 
+          media.mediaId.toString() === `tvshow_${id}` || 
+          media.id === id
+        )
       );
       
-      if (foundSeries) {
-        setSeries(foundSeries);
+      if (trackedSeries) {
+        // Ensure series object has the correct ID format
+        setSeries({
+          ...trackedSeries,
+          id: trackedSeries.mediaId
+        });
         setLoading(false);
       } else {
-        setError("TV series not found");
-        setLoading(false);
+        // FETCH FROM API DIRECTLY
+        try {
+          // Clean up the ID
+          let seriesId = id;
+          
+          // Handle tvshow_123 format from New This Quarter
+          if (typeof id === 'string' && id.includes('tvshow_')) {
+            seriesId = id.replace('tvshow_', '');
+          }
+          
+          console.log("Fetching series details for:", seriesId);
+          const seriesDetails = await getTVShowDetails(Number(seriesId));
+          
+          if (seriesDetails) {
+            setSeries({
+              ...seriesDetails,
+              title: seriesDetails.name, // Ensure it has title property for UI consistency
+              type: 'tvshow'
+            });
+            setLoading(false);
+          } else {
+            setError("TV series not found");
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error("Error fetching series details:", error);
+          setError("Failed to load series details");
+          setLoading(false);
+        }
       }
-    }
+    };
+    
+    fetchSeriesDetails();
   }, [id, getAllMedia]);
 
   const isTracked = series ? isMediaTracked(series.id, 'tvshow') : false;
@@ -107,7 +105,19 @@ const SeriesDetailPage = () => {
     };
     
     console.log("Adding series to tracking with data:", seriesData);
-    addMedia(seriesData, 'tvshow', status);
+    const success = addMedia(seriesData, 'tvshow', status);
+    
+    // Update the local state immediately to reflect tracked status
+    if (success) {
+      // Keep the current series object but mark it as tracked
+      setSeries({...series}); // Force a re-render
+      
+      // Refresh page without actually navigating away
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    }
+    
     toast({
       title: "Series added",
       description: `${series.title} has been added to your ${getStatusDisplayText(status, 'tvshow')} list.`,

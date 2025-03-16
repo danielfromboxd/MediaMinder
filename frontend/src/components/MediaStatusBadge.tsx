@@ -20,9 +20,9 @@ const getBaseClasses = (status: MediaStatus, hasClick: boolean, isSelected: bool
   }
   
   if (status === 'in_progress') {
-    return `bg-amber-500 hover:bg-amber-600 flex gap-1 items-center ${
+    return `bg-purple-500 hover:bg-purple-600 flex gap-1 items-center ${
       hasClick ? 'cursor-pointer' : ''
-    } ${isSelected ? 'ring-2 ring-amber-300 ring-offset-1' : ''}`;
+    } ${isSelected ? 'ring-2 ring-purple-300 ring-offset-1' : ''}`;
   }
   
   // finished
