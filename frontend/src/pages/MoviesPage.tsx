@@ -239,9 +239,6 @@ const MoviesPage = () => {
                 <DialogHeader className="mb-4">
                   <div className="flex justify-between items-start">
                     <DialogTitle className="text-2xl">{movieDetails.title}</DialogTitle>
-                    <Button variant="ghost" size="icon" onClick={closeDialog} className="h-8 w-8">
-                      <X className="h-4 w-4" />
-                    </Button>
                   </div>
                   <div className="flex flex-wrap gap-2 text-sm mt-1">
                     {movieDetails.genres?.map(genre => (

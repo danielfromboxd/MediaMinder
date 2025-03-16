@@ -7,7 +7,7 @@ import { getBookCoverUrl } from '@/services/openLibraryService';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
 import { toast } from '@/components/ui/use-toast';
 import StarRating from '@/components/StarRating';
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, X } from "lucide-react";
 import { getStatusDisplayText } from '@/utils/statusUtils';
 import { 
   Dialog, 
@@ -231,7 +231,9 @@ const BooksPage = () => {
             {selectedBook && (
               <div className="max-h-[80vh] overflow-y-auto">
                 <DialogHeader className="mb-4">
-                  <DialogTitle className="text-2xl">{selectedBook.title}</DialogTitle>
+                  <div className="flex justify-between items-start">
+                    <DialogTitle className="text-2xl">{selectedBook.title}</DialogTitle>
+                  </div>
                 </DialogHeader>
 
                 <div className="flex flex-col md:flex-row gap-6">

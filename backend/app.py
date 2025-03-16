@@ -14,8 +14,7 @@ CORS(app,
      resources={r"/api/*": {"origins": "*"}},
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
 app.config['SQLALCHEMY_ECHO'] = True  # Print all SQL queries
 
 # Initialize SQLAlchemy with the Flask app
