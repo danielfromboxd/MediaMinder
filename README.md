@@ -1,4 +1,4 @@
-# <img src="frontend/public/logo.png" width="24" height="24" style="vertical-align: middle; margin-right: 5px;" alt="MediaMinder Logo"/> MediaMinder
+MediaMinder
 
 MediaMinder is a comprehensive media tracking application that helps you manage your books, movies, and TV shows all in one place. Never lose track of what you've watched, read, or want to experience next.
 
