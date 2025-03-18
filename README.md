@@ -1,4 +1,4 @@
-MediaMinder
+# MediaMinder
 
 MediaMinder is a comprehensive media tracking application that helps you manage your books, movies, and TV shows all in one place. Never lose track of what you've watched, read, or want to experience next.
 
