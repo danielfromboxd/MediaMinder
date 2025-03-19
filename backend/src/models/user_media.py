@@ -3,21 +3,22 @@ from .db import db
 
 class UserMedia(db.Model):
     __tablename__ = 'user_media'
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'media_id'),
+        {'schema': 'public'}
+    )
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    media_id = db.Column(db.Integer, db.ForeignKey('media.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('public.users.id'), nullable=False)
+    media_id = db.Column(db.Integer, db.ForeignKey('public.media.id'), nullable=False)
     status = db.Column(db.String(20), nullable=False)
     rating = db.Column(db.Integer, nullable=True)
     review = db.Column(db.Text, nullable=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Fix relationships to match other models
+    # Keep relationships as they are
     media = db.relationship('Media', back_populates='user_media_items')
     user = db.relationship('User', back_populates='user_media')
-    
-    # Define a unique constraint
-    __table_args__ = (db.UniqueConstraint('user_id', 'media_id'),)
     
     def to_dict(self):
         try:

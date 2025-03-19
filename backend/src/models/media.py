@@ -2,6 +2,7 @@ from .db import db
 
 class Media(db.Model):
     __tablename__ = 'media'
+    __table_args__ = {'schema': 'public'}  # Add schema specification
     
     id = db.Column(db.Integer, primary_key=True)
     external_id = db.Column(db.String(50), nullable=False)  # Make sure this is String not Integer
@@ -27,7 +28,7 @@ class Media(db.Model):
     
     # Relationships - FIX: remove conflicting definitions
     user_media_items = db.relationship('UserMedia', back_populates='media', cascade='all, delete-orphan')
-    genres = db.relationship('Genre', secondary='media_genres', back_populates='media')
+    genres = db.relationship('Genre', secondary='public.media_genres', back_populates='media')
     
     def to_dict(self):
         result = {
