@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom';
 import { Book, Tv, Film, Search, EyeIcon, BookOpenIcon, CheckIcon, Sparkles, TrendingUp, Clock } from 'lucide-react';
 import { useMediaTracking } from '@/contexts/MediaTrackingContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getImageUrl, getTrendingMovies, getTrendingTVShows, getRecentMovies, getRecentTVShows } from '@/services/tmdbService';
-import { getBookCoverUrl, getTrendingBooks, getRecentBooks } from '@/services/openLibraryService';
+import { getImageUrl, getRecentMovies, getRecentTVShows } from '@/services/tmdbService';
+import { getBookCoverUrl, getRecentBooks } from '@/services/openLibraryService';
 import MediaStatusBadge from '@/components/MediaStatusBadge';
 import StarRating from '@/components/StarRating';
 import { Card, CardContent } from "@/components/ui/card";
@@ -74,13 +74,13 @@ const HomePage = () => {
   };
 
   // Add state for popular media
-  const [popularItems, setPopularItems] = useState<any[]>([]);
-  const [isLoadingPopular, setIsLoadingPopular] = useState(true);
+  const [newQuarterItems, setNewQuarterItems] = useState<any[]>([]);
+  const [isLoadingNewQuarter, setIsLoadingNewQuarter] = useState(true);
 
   // Fetch new content when component mounts
   useEffect(() => {
     const fetchNewItems = async () => {
-      setIsLoadingPopular(true);
+      setIsLoadingNewQuarter(true);
       try {
         // Get recently released/new media
         const [moviesData, showsData, booksData] = await Promise.all([
@@ -141,12 +141,12 @@ const HomePage = () => {
             return b.year - a.year;
           });
         
-        setPopularItems(combined.slice(0, 6));
+        setNewQuarterItems(combined.slice(0, 6));
       } catch (error) {
         console.error('Failed to fetch new items:', error);
-        setPopularItems([]);
+        setNewQuarterItems([]);
       } finally {
-        setIsLoadingPopular(false);
+        setIsLoadingNewQuarter(false);
       }
     };
     
@@ -282,7 +282,7 @@ const HomePage = () => {
             <Clock className="h-6 w-6 text-red-500" />
             <h2 className="text-2xl font-semibold">New This Quarter</h2>
           </div>
-          {isLoadingPopular ? (
+          {isLoadingNewQuarter ? (
             // Show loading skeleton while data is being fetched
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map(i => (
@@ -295,9 +295,9 @@ const HomePage = () => {
                 </Card>
               ))}
             </div>
-          ) : popularItems.length > 0 ? (
+          ) : newQuarterItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {popularItems.map(media => (
+              {newQuarterItems.map(media => (
                 <Link 
                   key={media.id} 
                   to={getMediaLink(media)}
@@ -336,7 +336,7 @@ const HomePage = () => {
             </div>
           ) : (
             // If API calls failed, show a message
-            <p className="text-gray-500">Unable to load popular content. Please try again later.</p>
+            <p className="text-gray-500">Unable to load new content. Please try again later.</p>
           )}
         </div>
         

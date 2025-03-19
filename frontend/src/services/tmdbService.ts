@@ -93,6 +93,7 @@ export const getImageUrl = (path: string | null, size: "w92" | "w154" | "w185" |
   return `${TMDB_IMAGE_URL}/${size}${path}`;
 };
 
+/*
 export const getTrendingMovies = async (timeWindow: 'day' | 'week' = 'week'): Promise<TMDBMovie[]> => {
   const response = await fetch(
     `${TMDB_API_URL}/trending/movie/${timeWindow}?api_key=${TMDB_API_KEY}`
@@ -118,6 +119,7 @@ export const getTrendingTVShows = async (timeWindow: 'day' | 'week' = 'week'): P
   const data = await response.json();
   return data.results;
 };
+*/
 
 export const getRecentMovies = async (): Promise<TMDBMovie[]> => {
   // Get now playing movies (currently in theaters)

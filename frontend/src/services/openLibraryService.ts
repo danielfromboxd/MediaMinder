@@ -94,7 +94,7 @@ export const getBookDetails = async (key: string): Promise<any> => {
 
   return response.json();
 };
-
+/*
 export const getTrendingBooks = async (): Promise<OpenLibraryBook[]> => {
   // OpenLibrary doesn't have a proper trending API, so we'll get popular books by subject
   const popularSubjects = ['fiction', 'fantasy', 'bestseller'];
@@ -111,6 +111,7 @@ export const getTrendingBooks = async (): Promise<OpenLibraryBook[]> => {
   const data = await response.json();
   return data.works || [];
 };
+*/
 
 // Update in openLibraryService.ts
 export const getRecentBooks = async (): Promise<OpenLibraryBook[]> => {
