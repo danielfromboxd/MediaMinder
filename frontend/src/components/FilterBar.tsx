@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { MediaStatus } from '@/contexts/MediaTrackingContext';
-import MediaStatusBadge from './MediaStatusBadge';
+import GenericMediaStatusBadge from './GenericMediaStatusBadge';
 import { 
   Select,
   SelectContent,
@@ -63,17 +62,17 @@ const FilterBar = ({ filter, onFilterChange }: FilterBarProps) => {
         <div className="flex-1 min-w-[200px]">
           <p className="text-sm text-gray-500 mb-2">Status</p>
           <div className="flex flex-wrap gap-2">
-            <MediaStatusBadge 
+            <GenericMediaStatusBadge 
               status="want_to_view" 
               onClick={() => handleStatusClick('want_to_view')} 
               isSelected={filter.status === 'want_to_view'}
             />
-            <MediaStatusBadge 
+            <GenericMediaStatusBadge 
               status="in_progress" 
               onClick={() => handleStatusClick('in_progress')} 
               isSelected={filter.status === 'in_progress'}
             />
-            <MediaStatusBadge 
+            <GenericMediaStatusBadge 
               status="finished" 
               onClick={() => handleStatusClick('finished')} 
               isSelected={filter.status === 'finished'}

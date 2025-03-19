@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
 import { getImageUrl, getTVShowDetails } from '@/services/tmdbService';
 import StarRating from '@/components/StarRating';
-import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Trash2, Calendar, Clock, Star, TvIcon, BarChart2, PlayCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { getStatusDisplayText } from '@/utils/statusUtils';
 import {
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 const SeriesDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -283,13 +284,73 @@ const SeriesDetailPage = () => {
           </div>
 
           <div className="md:w-2/3">
-            <h1 className="text-3xl font-bold mb-2">{series.title}</h1>
+            <h1 className="text-3xl font-bold mb-2">{series.title || series.name}</h1>
             
             {series.first_air_date && (
-              <p className="text-gray-500 mb-6">
+              <p className="text-gray-500 mb-4">
                 First Air Date: {series.first_air_date}
               </p>
             )}
+
+            {/* Add genres display */}
+            {series.genres && series.genres.length > 0 && (
+              <div className="mb-4">
+                <div className="flex flex-wrap gap-2">
+                  {series.genres.map(genre => (
+                    <span key={genre.id} className="bg-gray-100 px-2 py-1 rounded text-xs">
+                      {genre.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Add series stats grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+              {series.vote_average && (
+                <div className="flex items-center gap-2">
+                  <Star className="text-yellow-500 h-4 w-4" />
+                  <span className="text-sm">Rating: {series.vote_average.toFixed(1)}/10</span>
+                </div>
+              )}
+              
+              {series.episode_run_time && series.episode_run_time.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Clock className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Episode Runtime: {series.episode_run_time[0]} min</span>
+                </div>
+              )}
+              
+              {series.number_of_seasons && (
+                <div className="flex items-center gap-2">
+                  <TvIcon className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Seasons: {series.number_of_seasons}</span>
+                </div>
+              )}
+              
+              {series.number_of_episodes && (
+                <div className="flex items-center gap-2">
+                  <BarChart2 className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Episodes: {series.number_of_episodes}</span>
+                </div>
+              )}
+              
+              {series.status && (
+                <div className="flex items-center gap-2">
+                  <PlayCircle className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Status: {series.status}</span>
+                </div>
+              )}
+              
+              {series.networks && series.networks.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <TvIcon className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Network: {series.networks.map(n => n.name).join(', ')}</span>
+                </div>
+              )}
+            </div>
+            
+            <Separator className="my-4" />
             
             {series.overview && (
               <div className="mb-6">
@@ -303,8 +364,33 @@ const SeriesDetailPage = () => {
             {series.popularity && (
               <div className="mb-6">
                 <h2 className="text-xl font-semibold mb-2">Popularity</h2>
-                <div className="bg-red-500 text-white text-sm px-3 py-1 rounded-full inline-block">
-                  {series.popularity.toFixed(1)} / 10
+                <div className="bg-blue-500 text-white text-sm px-3 py-1 rounded-full inline-block">
+                  {series.popularity.toFixed(1)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Higher values indicate more popular content on TMDB
+                </p>
+              </div>
+            )}
+            
+            {/* Add seasons information if available */}
+            {series.seasons && series.seasons.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-2">Seasons</h2>
+                <div className="space-y-2">
+                  {series.seasons.map(season => (
+                    <div key={season.id} className="p-3 bg-gray-50 rounded-md">
+                      <div className="flex justify-between">
+                        <span className="font-medium">{season.name}</span>
+                        <span className="text-gray-500 text-sm">{season.episode_count} episodes</span>
+                      </div>
+                      {season.air_date && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          Air date: {new Date(season.air_date).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

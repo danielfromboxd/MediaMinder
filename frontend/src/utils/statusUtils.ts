@@ -19,3 +19,22 @@ export const getStatusDisplayText = (status: MediaStatus, mediaType?: MediaType)
       return String(status).replace('_', ' '); 
   }
 };
+
+/**
+ * Returns generic display text for media status (for filter controls)
+ */
+export const getGenericStatusDisplayText = (status: MediaStatus): string => {
+  switch (status) {
+    case 'want_to_view':
+      return 'To-do';
+      
+    case 'in_progress':
+      return 'In progress';
+      
+    case 'finished':
+      return 'Finished';
+      
+    default:
+      return String(status).replace('_', ' ');
+  }
+};

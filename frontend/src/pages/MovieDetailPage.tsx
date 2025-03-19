@@ -15,6 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar, Clock, Star, DollarSign, TrendingUp, PlayCircle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const MovieDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -281,10 +283,71 @@ const MovieDetailPage = () => {
             <h1 className="text-3xl font-bold mb-2">{movie.title}</h1>
             
             {movie.release_date && (
-              <p className="text-gray-500 mb-6">
+              <p className="text-gray-500 mb-4">
                 Release Date: {movie.release_date}
               </p>
             )}
+
+            {/* Add genres display */}
+            {movie.genres && movie.genres.length > 0 && (
+              <div className="mb-4">
+                <div className="flex flex-wrap gap-2">
+                  {movie.genres.map(genre => (
+                    <span key={genre.id} className="bg-gray-100 px-2 py-1 rounded text-xs">
+                      {genre.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Add movie stats grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+              {movie.vote_average && (
+                <div className="flex items-center gap-2">
+                  <Star className="text-yellow-500 h-4 w-4" />
+                  <span className="text-sm">Rating: {movie.vote_average.toFixed(1)}/10</span>
+                </div>
+              )}
+              
+              {movie.runtime && (
+                <div className="flex items-center gap-2">
+                  <Clock className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Runtime: {Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m</span>
+                </div>
+              )}
+              
+              {movie.status && (
+                <div className="flex items-center gap-2">
+                  <PlayCircle className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Status: {movie.status}</span>
+                </div>
+              )}
+              
+              {movie.budget > 0 && (
+                <div className="flex items-center gap-2">
+                  <DollarSign className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Budget: {new Intl.NumberFormat('en-US', { 
+                    style: 'currency', 
+                    currency: 'USD',
+                    maximumFractionDigits: 0
+                  }).format(movie.budget)}</span>
+                </div>
+              )}
+              
+              {movie.revenue > 0 && (
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="text-gray-500 h-4 w-4" />
+                  <span className="text-sm">Revenue: {new Intl.NumberFormat('en-US', { 
+                    style: 'currency', 
+                    currency: 'USD',
+                    maximumFractionDigits: 0 
+                  }).format(movie.revenue)}</span>
+                </div>
+              )}
+            </div>
+            
+            <Separator className="my-4" />
             
             {movie.overview && (
               <div className="mb-6">
@@ -298,9 +361,12 @@ const MovieDetailPage = () => {
             {movie.popularity && (
               <div className="mb-6">
                 <h2 className="text-xl font-semibold mb-2">Popularity</h2>
-                <div className="bg-red-500 text-white text-sm px-3 py-1 rounded-full inline-block">
-                  {movie.popularity.toFixed(1)} / 10
+                <div className="bg-blue-500 text-white text-sm px-3 py-1 rounded-full inline-block">
+                  {movie.popularity.toFixed(1)}
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Higher values indicate more popular content on TMDB
+                </p>
               </div>
             )}
           </div>
