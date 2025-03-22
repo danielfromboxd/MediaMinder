@@ -12,5 +12,8 @@
     "build": "cd frontend && npm run build",
     "lint": "cd frontend && npm run lint",
     "test": "cd frontend && npm run test"
+  },
+  "devDependencies": {
+    "serve": "^14.2.4"
   }
 }

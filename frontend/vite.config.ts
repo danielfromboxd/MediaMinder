@@ -8,17 +8,26 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    // Add this line to allow requests from Render.com domain
-    allowedHosts: ["mediaminder.onrender.com"]
+    allowedHosts: ["mediaminder.onrender.com", "*.onrender.com"] // Allow all Render domains
   },
   plugins: [
     react(),
-    mode === 'development' &&
-    componentTagger(),
+    // Only use component tagger in development
+    mode === 'development' && componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Add SPA configuration for React Router
+  build: {
+    outDir: "dist",
+    // Ensure the build doesn't include the component tagger
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  }
 }));
