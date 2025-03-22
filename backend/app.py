@@ -4,19 +4,25 @@ from src import create_app
 from src.models.db import db
 import logging
 from sqlalchemy import text
+import os
 
-logging.basicConfig(level=logging.DEBUG)
+# Set logging level based on environment
+is_production = os.environ.get('FLASK_ENV') == 'production'
+logging.basicConfig(level=logging.INFO if is_production else logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = create_app()
 
-# Configure CORS properly to allow requests from your frontend
+# Configure CORS for your frontend
+frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8080')
 CORS(app, 
-     resources={r"/api/*": {"origins": "*"}},
+     resources={r"/api/*": {"origins": [frontend_url, "http://localhost:8080"]}},
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
-app.config['SQLALCHEMY_ECHO'] = True  # Print all SQL queries
+
+# Only enable SQL echo in development
+app.config['SQLALCHEMY_ECHO'] = not is_production
 
 # Initialize SQLAlchemy with the Flask app
 db.init_app(app)
@@ -57,4 +63,6 @@ def handle_500_error(e):
     return response, 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Run with debug mode only in development
+    debug_mode = not is_production
+    app.run(debug=debug_mode, port=5000)

@@ -1,19 +1,9 @@
 import axios from 'axios';
 import { MediaType } from '@/contexts/MediaTrackingContext';
 
-// Determine the API URL based on environment
-const getApiBaseUrl = () => {
-  if (import.meta.env.DEV) {
-    return 'http://localhost:5000/api';
-  } else {
-    // Replace with your actual backend URL from Render dashboard
-    return 'https://mediaminder-1.onrender.com/';
-  }
-};
-
 // Create an axios instance with updated configuration
 const api = axios.create({
-  baseURL: getApiBaseUrl(),
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json'
   },
