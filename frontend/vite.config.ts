@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Add this line to allow requests from Render.com domain
+    allowedHosts: ["mediaminder.onrender.com"]
   },
   plugins: [
     react(),
