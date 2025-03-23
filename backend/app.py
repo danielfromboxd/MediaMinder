@@ -56,15 +56,6 @@ with app.app_context():
         except Exception as inner_e:
             logger.error(f"Could not fetch schema info: {inner_e}")
 
-# Register routes
-from src.routes.user_controller import user_bp
-from src.routes.auth import auth_bp
-from src.routes.media import media_bp
-
-app.register_blueprint(user_bp, url_prefix='/api/user')
-app.register_blueprint(auth_bp, url_prefix='/api/auth')
-app.register_blueprint(media_bp, url_prefix='/api/media')
-
 # Add error handler to ensure CORS headers are added to error responses
 @app.errorhandler(500)
 def handle_500_error(e):

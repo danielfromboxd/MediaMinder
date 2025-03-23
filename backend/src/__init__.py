@@ -5,7 +5,18 @@ import os
 
 def create_app():
     app = Flask(__name__)
-    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)  # Enable CORS for all routes
+    
+    # CORS settings - use environment variable
+    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8080')
+    CORS(app, 
+         resources={r"/api/*": {"origins": [
+             "https://media-minder-frontend.vercel.app",
+             frontend_url, 
+             "http://localhost:8080"
+         ]}},
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
     
     # Load configuration with correct path
     config_path = os.path.join(os.path.dirname(__file__), 'config', 'config.py')
@@ -37,9 +48,11 @@ def create_app():
     # Register blueprints (routes)
     from .routes.auth import auth_bp
     from .routes.media import media_bp
-    
+    from .routes.user_controller import user_bp
+
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(media_bp, url_prefix='/api/media')
+    app.register_blueprint(user_bp, url_prefix='/api/user')
     
     @app.errorhandler(500)
     def handle_500_error(e):
