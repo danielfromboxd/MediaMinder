@@ -8,8 +8,7 @@ const getApiBaseUrl = () => {
     return 'http://localhost:5000/api';
   } else {
     // Use the deployed backend URL in production
-    // Replace with your actual Render backend URL
-    return 'https://mediaminder-vnr9.onrender.com';
+    return 'https://mediaminder-vnr9.onrender.com/api';
   }
 };
 
