@@ -24,6 +24,8 @@ const SeriesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [selectedShowId, setSelectedShowId] = useState<number | null>(null);
+  const [ratingUpdateCounter, setRatingUpdateCounter] = useState(0);
+
   
   const { data, isLoading, error } = useTVShowSearch(searchQuery, isSearching);
   const { data: showDetails, isLoading: isLoadingDetails } = useTVShowDetails(selectedShowId);
@@ -50,15 +52,18 @@ const SeriesPage = () => {
     setSelectedShowId(null);
   };
 
-  const handleAddShow = (show: TMDBTVShow, status: MediaStatus) => {
-    console.log("Show object:", JSON.stringify(show));
-    console.log("Status:", status);
-    console.log("About to call addMedia with show and status");
-    addMedia(show, 'tvshow', status);
+  const handleAddShow = async (show: TMDBTVShow, status: MediaStatus) => {
+    console.log("Adding show:", show.name, "with status:", status);
+    
+    await addMedia(show, 'tvshow', status);
+    
     toast({
       title: "TV Show added",
       description: `${show.name} has been added to your ${getStatusDisplayText(status, 'tvshow')} list.`,
     });
+    
+    // Force re-render by incrementing the ratingUpdateCounter
+    setRatingUpdateCounter(prev => prev + 1);
   };
 
   const handleUpdateStatus = (showId: string, status: MediaStatus) => {
@@ -69,21 +74,49 @@ const SeriesPage = () => {
     });
   };
 
-  const handleUpdateRating = (showId: string, rating: number) => {
-    updateMediaRating(showId, rating);
+  const handleUpdateRating = async (showId: string, rating: number) => {
+    // Create proper ID format if needed
+    const mediaId = showId.includes('_') ? showId : `tvshow_${showDetails.id}`;
+    
+    console.log("Updating rating for:", mediaId, "to:", rating);
+    
+    // If not already tracked, add with 'none' status
+    if (!isMediaTracked(showDetails.id, 'tvshow')) {
+      console.log("Adding series before rating");
+      await addMedia(showDetails, 'tvshow', 'none');
+    }
+    
+    // Update rating (always use await)
+    await updateMediaRating(mediaId, rating);
+    
+    // Force refresh by incrementing counter
+    setRatingUpdateCounter(prev => prev + 1);
+    
     toast({
       title: "Rating updated",
-      description: `You rated this TV Show ${rating} out of 5 stars.`,
+      description: `You rated this series ${rating} out of 5 stars.`,
     });
   };
 
-  const handleRemoveShow = (showId: string, title: string) => {
-    removeMedia(showId);
-    toast({
-      title: "TV Show removed",
-      description: `${title} has been removed from your collection.`,
-      variant: "destructive",
-    });
+  const handleRemoveShow = async (showId: string, title: string) => {
+    console.log("Removing show:", showId, title);
+    
+    try {
+      await removeMedia(showId);
+      toast({
+        title: "Series removed",
+        description: `${title} has been removed from your collection.`,
+        variant: "destructive",
+      });
+      closeDialog();
+    } catch (err) {
+      console.error("Error removing show:", err);
+      toast({
+        title: "Error",
+        description: "Failed to remove series. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -256,75 +289,84 @@ const SeriesPage = () => {
                     
                     {/* TV Show tracking controls */}
                     <div className="mt-4 space-y-4">
-                      {isMediaTracked(showDetails.id, 'tvshow') ? (
-                        <>
-                          {/* Status selector */}
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Status:</label>
-                            <Select 
-                              defaultValue={getTrackedMediaItem(showDetails.id, 'tvshow')?.status}
-                              onValueChange={(value) => handleUpdateStatus(
-                                `tvshow_${showDetails.id}`, 
-                                value as MediaStatus
-                              )}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="want_to_view">Want to Watch</SelectItem>
-                                <SelectItem value="in_progress">Currently Watching</SelectItem>
-                                <SelectItem value="finished">Finished Watching</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          {/* Rating control */}
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Your Rating:</label>
-                            <StarRating 
-                              rating={getTrackedMediaItem(showDetails.id, 'tvshow')?.rating || 0} 
-                              onChange={(rating) => handleUpdateRating(`tvshow_${showDetails.id}`, rating)}
-                            />
-                          </div>
-                          
-                          {/* Remove button */}
-                          <Button 
-                            variant="destructive" 
-                            className="w-full"
-                            onClick={() => {
-                              handleRemoveShow(`tvshow_${showDetails.id}`, showDetails.name);
-                              closeDialog();
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" /> Remove from collection
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button 
-                            className="w-full" 
-                            onClick={() => handleAddShow(showDetails, 'want_to_view')}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to Watch
-                          </Button>
-                          <Button 
-                            className="w-full"
-                            variant="outline"
-                            onClick={() => handleAddShow(showDetails, 'in_progress')}
-                          >
-                            Add as Currently Watching
-                          </Button>
-                          <Button 
-                            className="w-full"
-                            variant="outline" 
-                            onClick={() => handleAddShow(showDetails, 'finished')}
-                          >
-                            Add as Watched
-                          </Button>
-                        </>
-                      )}
-                    </div>
+  {isMediaTracked(showDetails.id, 'tvshow') ? (
+    <>
+      {/* Status selector */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Status:</label>
+        <Select 
+          defaultValue={getTrackedMediaItem(showDetails.id, 'tvshow')?.status}
+          onValueChange={(value) => handleUpdateStatus(
+            `tvshow_${showDetails.id}`, 
+            value as MediaStatus
+          )}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="want_to_view">Want to Watch</SelectItem>
+            <SelectItem value="in_progress">Currently Watching</SelectItem>
+            <SelectItem value="finished">Finished Watching</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Rating control */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Your Rating:</label>
+        <StarRating 
+          key={`rating-${ratingUpdateCounter}`}
+          rating={getTrackedMediaItem(showDetails.id, 'tvshow')?.rating || 0} 
+          onChange={(rating) => handleUpdateRating(`tvshow_${showDetails.id}`, rating)}
+        />
+      </div>
+      
+      {/* Remove button */}
+      <Button 
+        variant="destructive" 
+        className="w-full"
+        onClick={() => {
+          handleRemoveShow(`tvshow_${showDetails.id}`, showDetails.name);
+          closeDialog();
+        }}
+      >
+        <Trash2 className="h-4 w-4 mr-1" /> Remove from collection
+      </Button>
+    </>
+  ) : (
+    <>
+      {/* Single add button with dropdown */}
+      <div className="space-y-2">
+        <p className="text-sm text-gray-500">Add this series to your collection to rate it</p>
+        <Select 
+          onValueChange={(status) => {
+            handleAddShow(showDetails, status as MediaStatus);
+            // Force refresh after adding
+            setRatingUpdateCounter(prev => prev + 1);
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Add to collection..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="want_to_view">Want to Watch</SelectItem>
+            <SelectItem value="in_progress">Currently Watching</SelectItem>
+            <SelectItem value="finished">Finished Watching</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Disabled rating component */}
+      <div className="space-y-2 opacity-50">
+        <label className="text-sm font-medium">Your Rating:</label>
+        <StarRating rating={0} onChange={() => {}} />
+        <p className="text-xs text-gray-500">Add to collection first to rate</p>
+      </div>
+    </>
+  )}
+</div>
+
                   </div>
 
                   <div className="md:w-2/3">

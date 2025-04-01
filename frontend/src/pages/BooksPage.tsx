@@ -28,6 +28,7 @@ const BooksPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+  const [ratingUpdateCounter, setRatingUpdateCounter] = useState(0);
   
   const { data, isLoading, error } = useBookSearch(searchQuery, isSearching);
   const { 
@@ -52,17 +53,23 @@ const BooksPage = () => {
     setSelectedBook(null);
   };
 
-  const handleAddBook = (book: any, status: MediaStatus) => {
+  const handleAddBook = async (book: any, status: MediaStatus) => {
     // Modify the book object to include cover_i as poster_path for tracking
     const bookWithPoster = {
       ...book,
       poster_path: book.cover_i
     };
-    addMedia(bookWithPoster, 'book', status);
+    
+    // Await the addMedia operation
+    await addMedia(bookWithPoster, 'book', status);
+    
     toast({
       title: "Book added",
       description: `${book.title} has been added to your ${getStatusDisplayText(status, 'book')} list.`,
     });
+    
+    // Force a re-render by updating the ratingUpdateCounter
+    setRatingUpdateCounter(prev => prev + 1);
   };
 
   const handleUpdateStatus = (bookId: string, status: MediaStatus) => {
@@ -73,12 +80,56 @@ const BooksPage = () => {
     });
   };
 
-  const handleUpdateRating = (bookId: string, rating: number) => {
-    updateMediaRating(bookId, rating);
-    toast({
-      title: "Rating updated",
-      description: `You rated this book ${rating} out of 5 stars.`,
-    });
+  const handleUpdateRating = async (bookId: string, rating: number) => {
+    // Always ensure the proper full ID format for books
+    const fullBookId = bookId.includes('_') ? bookId : `book_${selectedBook.key}`;
+    
+    console.log(`Rating book: ${fullBookId} with rating: ${rating}`);
+    
+    try {
+      // If not already tracked, add with 'none' status
+      if (!isMediaTracked(selectedBook.key, 'book')) {
+        // Book isn't tracked, add it first
+        console.log("Book not tracked, adding first");
+        
+        // Add the book and wait for it to complete
+        await addMedia(selectedBook, 'book', 'none');
+      }
+      
+      // Get the tracked item to ensure we have the correct ID
+      const trackedItem = getTrackedMediaItem(selectedBook.key, 'book');
+      
+      if (!trackedItem) {
+        console.error("Tracked item not found after adding/checking");
+        toast({
+          title: "Error",
+          description: "Failed to update rating. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Use the tracked item's ID to update the rating
+      const mediaId = trackedItem.id;
+      
+      // Update rating (always use await)
+      await updateMediaRating(mediaId, rating);
+      
+      // Force refresh by incrementing counter
+      setRatingUpdateCounter(prev => prev + 1);
+      
+      toast({
+        title: "Rating updated",
+        description: `You rated this book ${rating} out of 5 stars.`,
+      });
+    } catch (err) {
+      console.error("Error rating book:", err);
+      toast({
+        title: "Error",
+        description: "Failed to update rating. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRemoveBook = (bookId: string, title: string) => {
@@ -269,8 +320,8 @@ const BooksPage = () => {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="want_to_view">Want to Read</SelectItem>
-                                <SelectItem value="in_progress">Reading</SelectItem>
-                                <SelectItem value="finished">Finished</SelectItem>
+                                <SelectItem value="in_progress">Currently Reading</SelectItem>
+                                <SelectItem value="finished">Finished Reading</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -279,6 +330,7 @@ const BooksPage = () => {
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Your Rating:</label>
                             <StarRating 
+                              key={`rating-${ratingUpdateCounter}`}
                               rating={getTrackedMediaItem(selectedBook.key, 'book')?.rating || 0} 
                               onChange={(rating) => handleUpdateRating(`book_${selectedBook.key}`, rating)}
                             />
@@ -298,26 +350,33 @@ const BooksPage = () => {
                         </>
                       ) : (
                         <>
-                          <Button 
-                            className="w-full" 
-                            onClick={() => handleAddBook(selectedBook, 'want_to_view')}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to Read
-                          </Button>
-                          <Button 
-                            className="w-full"
-                            variant="outline"
-                            onClick={() => handleAddBook(selectedBook, 'in_progress')}
-                          >
-                            Add as Reading
-                          </Button>
-                          <Button 
-                            className="w-full"
-                            variant="outline" 
-                            onClick={() => handleAddBook(selectedBook, 'finished')}
-                          >
-                            Add as Finished
-                          </Button>
+                          {/* Single add button with dropdown */}
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-500">Add this book to your collection to rate it</p>
+                            <Select 
+                              onValueChange={(status) => {
+                                handleAddBook(selectedBook, status as MediaStatus);
+                                // Force refresh after adding
+                                setRatingUpdateCounter(prev => prev + 1);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Add to collection..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="want_to_view">Want to Read</SelectItem>
+                                <SelectItem value="in_progress">Currently Reading</SelectItem>
+                                <SelectItem value="finished">Finished Reading</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {/* Disabled rating component */}
+                          <div className="space-y-2 opacity-50">
+                            <label className="text-sm font-medium">Your Rating:</label>
+                            <StarRating rating={0} onChange={() => {}} />
+                            <p className="text-xs text-gray-500">Add to collection first to rate</p>
+                          </div>
                         </>
                       )}
                     </div>

@@ -23,6 +23,7 @@ const SeriesDetailPage = () => {
   const [series, setSeries] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ratingUpdateCounter, setRatingUpdateCounter] = useState(0); // Add this line
 
   const { 
     getAllMedia, 
@@ -31,70 +32,54 @@ const SeriesDetailPage = () => {
     updateMediaRating, 
     removeMedia, 
     isMediaTracked, 
-    getTrackedMediaItem 
+    getTrackedMediaItem,
+    trackedMedia // Add to get trackedMedia for dependencies
   } = useMediaTracking();
 
   useEffect(() => {
     const fetchSeriesDetails = async () => {
-      // Find the series in our tracked media
-      const allMedia = getAllMedia();
+      if (!id) return;
       
-      const trackedSeries = allMedia.find(
-        media => media.type === 'tvshow' && (
-          media.mediaId.toString() === id || 
-          media.mediaId.toString() === `tvshow_${id}` || 
-          media.id === id
-        )
-      );
-      
-      if (trackedSeries) {
-        // Ensure series object has the correct ID format
-        setSeries({
-          ...trackedSeries,
-          id: trackedSeries.mediaId
-        });
-        setLoading(false);
-      } else {
-        // FETCH FROM API DIRECTLY
-        try {
-          // Clean up the ID
-          let seriesId = id;
-          
-          // Handle tvshow_123 format from New This Quarter
-          if (typeof id === 'string' && id.includes('tvshow_')) {
-            seriesId = id.replace('tvshow_', '');
-          }
-          
-          console.log("Fetching series details for:", seriesId);
-          const seriesDetails = await getTVShowDetails(Number(seriesId));
-          
-          if (seriesDetails) {
-            setSeries({
-              ...seriesDetails,
-              title: seriesDetails.name, // Ensure it has title property for UI consistency
-              type: 'tvshow'
-            });
-            setLoading(false);
-          } else {
-            setError("TV series not found");
-            setLoading(false);
-          }
-        } catch (error) {
-          console.error("Error fetching series details:", error);
-          setError("Failed to load series details");
-          setLoading(false);
+      try {
+        setLoading(true); // Corrected: Use setLoading here
+        
+        // Clean up the ID
+        let seriesId = id;
+        
+        // Handle tvshow_123 format from New This Quarter
+        if (typeof id === 'string' && id.includes('tvshow_')) {
+          seriesId = id.replace('tvshow_', '');
         }
+        
+        console.log("Fetching series details for:", seriesId);
+        const seriesDetails = await getTVShowDetails(Number(seriesId));
+        
+        if (seriesDetails) {
+          setSeries({
+            ...seriesDetails,
+            title: seriesDetails.name, // Ensure it has title property for UI consistency
+            type: 'tvshow'
+          });
+          setLoading(false); // Corrected: Use setLoading here
+        } else {
+          setError("TV series not found");
+          setLoading(false); // Corrected: Use setLoading here
+        }
+      } catch (error) {
+        console.error("Error fetching series details:", error);
+        setError("Failed to load series details");
+        setLoading(false); // Corrected: Use setLoading here
       }
     };
     
     fetchSeriesDetails();
-  }, [id, getAllMedia]);
+  }, [id]);
 
   const isTracked = series ? isMediaTracked(series.id, 'tvshow') : false;
   const trackedItem = isTracked ? getTrackedMediaItem(series?.id, 'tvshow') : null;
 
   // Function to explicitly include title
-  const handleAddSeries = (series: any, status: MediaStatus) => {
+  const handleAddSeries = async (series: any, status: MediaStatus) => {
     console.log("Adding series:", series);
     
     // Make sure series has all required fields
@@ -106,52 +91,120 @@ const SeriesDetailPage = () => {
     };
     
     console.log("Adding series to tracking with data:", seriesData);
-    const success = addMedia(seriesData, 'tvshow', status);
+    const success = await addMedia(seriesData, 'tvshow', status);
     
     // Update the local state immediately to reflect tracked status
     if (success) {
-      // Keep the current series object but mark it as tracked
-      setSeries({...series}); // Force a re-render
+      // Get the newly added item
+      const newItem = getTrackedMediaItem(series.id, 'tvshow');
       
-      // Refresh page without actually navigating away
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      if (newItem) {
+        // Update the series object with the new status
+        setSeries({
+          ...series,
+          status: newItem.status
+        });
+      }
+      
+      toast({
+        title: "Series added",
+        description: `${series.title} has been added to your ${getStatusDisplayText(status, 'tvshow')} list.`,
+      });
+      
+      // Force a re-render by updating the ratingUpdateCounter
+      setRatingUpdateCounter(prev => prev + 1);
     }
-    
-    toast({
-      title: "Series added",
-      description: `${series.title} has been added to your ${getStatusDisplayText(status, 'tvshow')} list.`,
-    });
   };
 
   const handleUpdateStatus = (status: MediaStatus) => {
-    if (!trackedItem) return;
+    if (!series) return;
+    
+    // Get the tracked item to ensure we have the correct ID
+    const trackedItem = getTrackedMediaItem(series.id, 'tvshow');
+    
+    if (!trackedItem) {
+      console.error("Tracked item not found after adding/checking");
+      toast({
+        title: "Error",
+        description: "Failed to update status. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     updateMediaStatus(trackedItem.id, status);
     toast({
       title: "Status updated",
       description: `Series status has been updated to ${getStatusDisplayText(status, 'tvshow')}.`,
     });
+    
+    // Force a re-render by updating the ratingUpdateCounter
+    setRatingUpdateCounter(prev => prev + 1);
   };
 
-  const handleUpdateRating = (rating: number) => {
-    if (!trackedItem) return;
-    
-    updateMediaRating(trackedItem.id, rating);
-    toast({
-      title: "Rating updated",
-      description: `You rated this series ${rating} out of 5 stars.`,
-    });
+  // Updated rating handler that works for both tracked and untracked series
+  const handleUpdateRating = async (rating: number) => {
+    if (!series) return;
+
+    try {
+      // If not tracked yet, add with 'none' status first
+      if (!isTracked) {
+        const seriesData = {
+          ...series,
+          name: series.title || series.name,
+          title: series.title || series.name,
+          poster_path: series.posterPath || series.poster_path,
+        };
+
+        // Await the addMedia operation
+        const success = await addMedia(seriesData, 'tvshow', 'none');
+        if (!success) return;
+      }
+
+      // Get the tracked item to ensure we have the correct ID
+      const trackedItem = getTrackedMediaItem(series.id, 'tvshow');
+
+      if (!trackedItem) {
+        console.error("Tracked item not found after adding/checking");
+        toast({
+          title: "Error",
+          description: "Failed to update rating. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use the tracked item's ID to update the rating
+      const mediaId = trackedItem.id;
+
+      // Await the updateMediaRating operation
+      await updateMediaRating(mediaId, rating);
+
+      // Force refresh by incrementing counter
+      setRatingUpdateCounter((prev) => prev + 1);
+
+      toast({
+        title: "Rating updated",
+        description: `You rated this series ${rating} out of 5 stars.`,
+      });
+    } catch (err) {
+      console.error("Error updating series rating:", err);
+      toast({
+        title: "Error",
+        description: "Failed to update rating. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRemoveSeries = () => {
-    if (!trackedItem) return;
+    if (!series) return;
     
-    removeMedia(trackedItem.id);
+    removeMedia(`tvshow_${series.id}`);
+    
     toast({
       title: "Series removed",
-      description: `${series?.title} has been removed from your collection.`,
+      description: `${series.title} has been removed from your collection.`,
       variant: "destructive",
     });
   };
@@ -226,16 +279,19 @@ const SeriesDetailPage = () => {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Status:</label>
                     <Select 
-                      defaultValue={trackedItem?.status}
+                      defaultValue={trackedItem?.status || 'none'}
                       onValueChange={(value) => handleUpdateStatus(value as MediaStatus)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
+                      <SelectTrigger className="w-full">
+                        {/* Display the status text */}
+                        <SelectValue>
+                          {trackedItem ? getStatusDisplayText(trackedItem.status, 'tvshow') : "Select status"}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="want_to_view">Want to Watch</SelectItem>
-                        <SelectItem value="in_progress">Watching</SelectItem>
-                        <SelectItem value="finished">Finished</SelectItem>
+                        <SelectItem value="in_progress">Currently Watching</SelectItem>
+                        <SelectItem value="finished">Finished Watching</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -243,11 +299,13 @@ const SeriesDetailPage = () => {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Your Rating:</label>
                     <StarRating 
+                      key={`series-rating-${ratingUpdateCounter}`}
                       rating={trackedItem?.rating || 0} 
-                      onChange={handleUpdateRating}
+                      onChange={(rating) => handleUpdateRating(rating)}
                     />
                   </div>
                   
+                  {/* Delete button */}
                   <Button 
                     variant="destructive" 
                     className="w-full"
@@ -258,26 +316,30 @@ const SeriesDetailPage = () => {
                 </>
               ) : (
                 <>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handleAddSeries(series, 'want_to_view')}
-                  >
-                    <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to Watch
-                  </Button>
-                  <Button 
-                    className="w-full"
-                    variant="outline"
-                    onClick={() => handleAddSeries(series, 'in_progress')}
-                  >
-                    Add as Watching
-                  </Button>
-                  <Button 
-                    className="w-full"
-                    variant="outline" 
-                    onClick={() => handleAddSeries(series, 'finished')}
-                  >
-                    Add as Finished
-                  </Button>
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-500">Add this series to your collection to rate it</p>
+                    <Select 
+                      onValueChange={(status) => {
+                        handleAddSeries(series, status as MediaStatus);
+                        setRatingUpdateCounter(prev => prev + 1);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Add to collection..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="want_to_view">Want to Watch</SelectItem>
+                        <SelectItem value="in_progress">Currently Watching</SelectItem>
+                        <SelectItem value="finished">Finished Watching</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2 opacity-50">
+                    <label className="text-sm font-medium">Your Rating:</label>
+                    <StarRating rating={0} onChange={() => {}} />
+                    <p className="text-xs text-gray-500">Add to collection first to rate</p>
+                  </div>
                 </>
               )}
             </div>

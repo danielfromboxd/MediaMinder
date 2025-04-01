@@ -24,6 +24,7 @@ const MoviesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [ratingUpdateCounter, setRatingUpdateCounter] = useState(0);
   
   const { data, isLoading, error } = useMovieSearch(searchQuery, isSearching);
   const { data: movieDetails, isLoading: isLoadingDetails } = useMovieDetails(selectedMovieId);
@@ -78,8 +79,24 @@ const MoviesPage = () => {
     });
   };
 
-  const handleUpdateRating = (movieId: string, rating: number) => {
-    updateMediaRating(movieId, rating);
+  const handleUpdateRating = async (movieId: string, rating: number) => {
+    // Create proper ID format if needed
+    const mediaId = movieId.includes('_') ? movieId : `movie_${movieDetails.id}`;
+    
+    console.log("Updating rating for:", mediaId, "to:", rating);
+    
+    // If not already tracked, add with 'none' status
+    if (!isMediaTracked(movieDetails.id, 'movie')) {
+      console.log("Adding movie before rating");
+      await addMedia(movieDetails, 'movie', 'none');
+    }
+    
+    // Update rating (always use await)
+    await updateMediaRating(mediaId, rating);
+    
+    // Force refresh by recreating movieDetails object
+    setRatingUpdateCounter(prev => prev + 1);
+    
     toast({
       title: "Rating updated",
       description: `You rated this movie ${rating} out of 5 stars.`,
@@ -292,6 +309,7 @@ const MoviesPage = () => {
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Your Rating:</label>
                             <StarRating 
+                              key={`rating-${ratingUpdateCounter}`}
                               rating={getTrackedMediaItem(movieDetails.id, 'movie')?.rating || 0} 
                               onChange={(rating) => handleUpdateRating(`movie_${movieDetails.id}`, rating)}
                             />
@@ -311,26 +329,33 @@ const MoviesPage = () => {
                         </>
                       ) : (
                         <>
-                          <Button 
-                            className="w-full" 
-                            onClick={() => handleAddMovie(movieDetails, 'want_to_view')}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to Watch
-                          </Button>
-                          <Button 
-                            className="w-full"
-                            variant="outline"
-                            onClick={() => handleAddMovie(movieDetails, 'in_progress')}
-                          >
-                            Add as Currently Watching
-                          </Button>
-                          <Button 
-                            className="w-full"
-                            variant="outline" 
-                            onClick={() => handleAddMovie(movieDetails, 'finished')}
-                          >
-                            Add as Watched
-                          </Button>
+                          {/* Single add button with dropdown */}
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-500">Add this movie to your collection to rate it</p>
+                            <Select 
+                              onValueChange={(status) => {
+                                handleAddMovie(movieDetails, status as MediaStatus);
+                                // Force refresh after adding
+                                setRatingUpdateCounter(prev => prev + 1);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Add to collection..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="want_to_view">Want to Watch</SelectItem>
+                                <SelectItem value="in_progress">Currently Watching</SelectItem>
+                                <SelectItem value="finished">Finished Watching</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {/* Disabled rating component */}
+                          <div className="space-y-2 opacity-50">
+                            <label className="text-sm font-medium">Your Rating:</label>
+                            <StarRating rating={0} />
+                            <p className="text-xs text-gray-500">Add to collection first to rate</p>
+                          </div>
                         </>
                       )}
                     </div>

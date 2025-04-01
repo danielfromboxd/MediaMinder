@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Star } from 'lucide-react';
 
@@ -25,7 +24,6 @@ const StarRating = ({
   
   const handleClick = (value: number) => {
     if (onChange) {
-      // Toggle between rating and 0 if clicking the same star
       const newRating = value === rating ? 0 : value;
       onChange(newRating);
     }

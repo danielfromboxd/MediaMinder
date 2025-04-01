@@ -8,6 +8,7 @@ import StarRating from '@/components/StarRating';
 import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { getStatusDisplayText } from '@/utils/statusUtils';
+import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
   SelectContent,
@@ -22,11 +23,10 @@ const MovieDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [movie, setMovie] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [ratingUpdateCounter, setRatingUpdateCounter] = useState(0);
   const { 
-    getAllMedia, 
     addMedia, 
     updateMediaStatus, 
     updateMediaRating, 
@@ -34,86 +34,39 @@ const MovieDetailPage = () => {
     isMediaTracked, 
     getTrackedMediaItem 
   } = useMediaTracking();
-
+  const { toast } = useToast();
+  
+  // Get tracked status
+  const isTracked = movie ? isMediaTracked(movie.id, 'movie') : false;
+  const trackedItem = isTracked && movie ? getTrackedMediaItem(movie.id, 'movie') : null;
+  
+  // Fetch movie details
   useEffect(() => {
     const fetchMovieDetails = async () => {
-      // Find the movie in our tracked media
-      const allMedia = getAllMedia();
+      if (!id) return;
       
-      // First try to find the movie in tracked media using multiple ID formats
-      const trackedMovie = allMedia.find(
-        media => media.type === 'movie' && (
-          media.mediaId.toString() === id || 
-          media.mediaId.toString() === `movie_${id}` || 
-          media.id === id
-        )
-      );
-      
-      if (trackedMovie) {
-        // Ensure the movie object has the correct ID format
-        setMovie({
-          ...trackedMovie,
-          id: trackedMovie.mediaId
-        });
-        setLoading(false);
-      } else {
-        // FETCH FROM API DIRECTLY
-        try {
-          // Clean up the ID
-          let movieId = id;
-          
-          // Handle movie_123 format from New This Quarter
-          if (typeof id === 'string' && id.includes('movie_')) {
-            movieId = id.replace('movie_', '');
-          }
-          
-          console.log("Fetching movie details for:", movieId);
-          const movieDetails = await getMovieDetails(Number(movieId));
-          
-          if (movieDetails) {
-            setMovie({
-              ...movieDetails,
-              type: 'movie'
-            });
-            setLoading(false);
-          } else {
-            setError("Movie not found");
-            setLoading(false);
-          }
-        } catch (error) {
-          console.error("Error fetching movie details:", error);
-          setError("Failed to load movie details");
-          setLoading(false);
+      try {
+        setIsLoading(true);
+        const response = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${import.meta.env.VITE_TMDB_API_KEY}&append_to_response=credits,videos`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch movie details');
         }
+        const data = await response.json();
+        setMovie(data);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+      } finally {
+        setIsLoading(false);
       }
     };
     
     fetchMovieDetails();
-  }, [id, getAllMedia]);
-
-  const isTracked = movie ? isMediaTracked(movie.id, 'movie') : false;
-  const trackedItem = isTracked ? getTrackedMediaItem(movie?.id, 'movie') : null;
+  }, [id, trackedItem]); // TrackedItem as dependency to refresh when ratings change
 
   const handleAddMovie = (status: MediaStatus) => {
     if (!movie) return;
     
-    const movieData = {
-      ...movie,
-      poster_path: movie.posterPath || movie.poster_path
-    };
-    
-    const success = addMedia(movieData, 'movie', status);
-    
-    // Update the local state immediately to reflect tracked status
-    if (success) {
-      // Keep the current movie object but mark it as tracked
-      setMovie({...movie}); // Force a re-render
-      
-      // Refresh page without actually navigating away
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-    }
+    addMedia(movie, 'movie', status);
     
     toast({
       title: "Movie added",
@@ -122,9 +75,10 @@ const MovieDetailPage = () => {
   };
 
   const handleUpdateStatus = (status: MediaStatus) => {
-    if (!trackedItem) return;
+    if (!isTracked || !movie) return;
     
-    updateMediaStatus(trackedItem.id, status);
+    updateMediaStatus(`movie_${movie.id}`, status);
+    
     toast({
       title: "Status updated",
       description: `Movie status has been updated to ${getStatusDisplayText(status, 'movie')}.`,
@@ -132,9 +86,23 @@ const MovieDetailPage = () => {
   };
 
   const handleUpdateRating = (rating: number) => {
-    if (!trackedItem) return;
+    if (!movie) return;
     
-    updateMediaRating(trackedItem.id, rating);
+    console.log("Updating movie rating to:", rating);
+    
+    // If not tracked yet, add with 'none' status first
+    if (!isTracked) {
+      const success = addMedia(movie, 'movie', 'none');
+      if (!success) return;
+    }
+    
+    // Always use the full ID format
+    const mediaId = `movie_${movie.id}`;
+    updateMediaRating(mediaId, rating);
+    
+    // Force refresh - IMPORTANT
+    setRatingUpdateCounter(prev => prev + 1); 
+    
     toast({
       title: "Rating updated",
       description: `You rated this movie ${rating} out of 5 stars.`,
@@ -142,17 +110,18 @@ const MovieDetailPage = () => {
   };
 
   const handleRemoveMovie = () => {
-    if (!trackedItem) return;
+    if (!isTracked || !movie) return;
     
-    removeMedia(trackedItem.id);
+    removeMedia(`movie_${movie.id}`);
+    
     toast({
       title: "Movie removed",
-      description: `${movie?.title} has been removed from your collection.`,
+      description: `${movie.title} has been removed from your collection.`,
       variant: "destructive",
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen">
         <Sidebar />
@@ -176,7 +145,7 @@ const MovieDetailPage = () => {
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
           <div className="bg-red-50 p-4 rounded-md">
-            <p className="text-red-500">{error || "Movie not found"}</p>
+            <p className="text-red-500">{error?.message || "Movie not found"}</p>
           </div>
         </div>
       </div>
@@ -198,9 +167,9 @@ const MovieDetailPage = () => {
         <div className="flex flex-col md:flex-row gap-8">
           <div className="md:w-1/3">
             <div className="rounded-lg overflow-hidden shadow-md">
-              {movie.posterPath || movie.poster_path ? (
+              {movie.poster_path ? (
                 <img 
-                  src={getImageUrl(movie.posterPath || movie.poster_path)}
+                  src={getImageUrl(movie.poster_path)}
                   alt={movie.title}
                   className="w-full object-cover"
                   onError={(e) => {
@@ -216,34 +185,39 @@ const MovieDetailPage = () => {
               )}
             </div>
 
+            {/* In the right column where you show movie actions */}
             <div className="mt-6 space-y-4">
               {isTracked ? (
                 <>
+                  {/* Status selector dropdown */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Status:</label>
                     <Select 
                       defaultValue={trackedItem?.status}
                       onValueChange={(value) => handleUpdateStatus(value as MediaStatus)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="want_to_view">Want to watch</SelectItem>
-                        <SelectItem value="in_progress">Currently watching</SelectItem>
-                        <SelectItem value="finished">Finished watching</SelectItem>
+                        <SelectItem value="want_to_view">Want to Watch</SelectItem>
+                        <SelectItem value="in_progress">Currently Watching</SelectItem>
+                        <SelectItem value="finished">Finished Watching</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
+                  {/* Rating control */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Your Rating:</label>
                     <StarRating 
+                      key={`movie-rating-${ratingUpdateCounter}`}
                       rating={trackedItem?.rating || 0} 
                       onChange={handleUpdateRating}
                     />
                   </div>
                   
+                  {/* Remove button */}
                   <Button 
                     variant="destructive" 
                     className="w-full"
@@ -254,26 +228,32 @@ const MovieDetailPage = () => {
                 </>
               ) : (
                 <>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handleAddMovie('want_to_view')}
-                  >
-                    <PlusCircle className="h-4 w-4 mr-1" /> Add to Want to watch
-                  </Button>
-                  <Button 
-                    className="w-full"
-                    variant="outline"
-                    onClick={() => handleAddMovie('in_progress')}
-                  >
-                    Add as Currently watching
-                  </Button>
-                  <Button 
-                    className="w-full"
-                    variant="outline" 
-                    onClick={() => handleAddMovie('finished')}
-                  >
-                    Add as Watched
-                  </Button>
+                  {/* Add to collection dropdown */}
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-500">Add this movie to your collection to rate it</p>
+                    <Select 
+                      onValueChange={(status) => {
+                        handleAddMovie(status as MediaStatus);
+                        setRatingUpdateCounter(prev => prev + 1);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Add to collection..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="want_to_view">Want to Watch</SelectItem>
+                        <SelectItem value="in_progress">Currently Watching</SelectItem>
+                        <SelectItem value="finished">Finished Watching</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Disabled rating component */}
+                  <div className="space-y-2 opacity-50">
+                    <label className="text-sm font-medium">Your Rating:</label>
+                    <StarRating rating={0} onChange={() => {}} />
+                    <p className="text-xs text-gray-500">Add to collection first to rate</p>
+                  </div>
                 </>
               )}
             </div>
