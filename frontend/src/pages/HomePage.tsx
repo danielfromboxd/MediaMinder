@@ -156,12 +156,41 @@ const HomePage = () => {
   const recommendedMedia = isLoggedIn ? generateRecommendedMedia() : [];
 
   const getMediaImageSrc = (media: any) => {
-    if (media.type === 'book' && media.posterPath) {
-      return getBookCoverUrl(Number(media.posterPath));
+    if (media.type === 'book') {
+      // If we have cover_i directly available, use it first
+      if (media.cover_i) {
+        return getBookCoverUrl(media.cover_i);
+      }
+      
+      // If we have posterPath formatted as a number, use it
+      const numericPosterPath = parseInt(media.posterPath);
+      if (!isNaN(numericPosterPath)) {
+        return getBookCoverUrl(numericPosterPath);
+      }
+      
+      // Try as a direct URL if it looks like a complete URL
+      if (media.posterPath?.startsWith('http')) {
+        return media.posterPath;
+      }
+      
+      // Last resort: try to parse coverData
+      try {
+        if (media.coverData) {
+          const coverData = JSON.parse(media.coverData);
+          if (coverData.cover_i) {
+            return getBookCoverUrl(coverData.cover_i);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse cover data", e);
+      }
+      
+      // Final attempt with what we have
+      return getBookCoverUrl(media.posterPath || media.cover_i || media);
     } else if ((media.type === 'movie' || media.type === 'tvshow') && media.posterPath) {
       return getImageUrl(media.posterPath);
     }
-    return null;
+    return 'https://via.placeholder.com/150?text=No+Image';
   };
 
   const getMediaLink = (media: any) => {
@@ -318,7 +347,7 @@ const HomePage = () => {
                     ) : (
                       <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
                     )}
-                    {/* Replace popularity badge with release year */}
+                    {/* Release year */}
                     <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
                       {media.year || 'New'}
                     </div>

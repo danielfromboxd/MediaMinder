@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { mediaAPI } from '@/services/apiService';
 import { TMDBMovie, TMDBTVShow } from '@/services/tmdbService';
 import { OpenLibraryBook } from '@/services/openLibraryService';
+import { getBookCoverUrl } from '@/services/openLibraryService';
 
 // Media types
 export type MediaType = 'movie' | 'book' | 'tvshow';
@@ -21,6 +22,7 @@ export interface TrackedMedia {
   status: MediaStatus;
   addedAt: string; // ISO date string
   updatedAt: string; // ISO date string
+  coverData?: string;
 }
 
 interface MediaTrackingContextType {
@@ -118,9 +120,31 @@ export function MediaTrackingProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("➡️ Add Media INPUT:", { media, type, status });
       
+      // Special handling for books to ensure cover images work
+      let posterPath = '';
+      let coverImageUrl = ''; // Add direct image URL
+
+      if (type === 'book') {
+        const book = media as any;
+        
+        // Store the cover ID in posterPath, but ALSO compute the full URL
+        posterPath = book.cover_i ? 
+          `${book.cover_i}` : 
+          book.cover_edition_key ? 
+            `olid:${book.cover_edition_key}` : '';
+        
+        // Pre-compute the image URL
+        coverImageUrl = getBookCoverUrl({
+          cover_i: book.cover_i,
+          cover_edition_key: book.cover_edition_key,
+          isbn: book.isbn
+        }, "M");
+      } else {
+        posterPath = (media as TMDBMovie | TMDBTVShow).poster_path || '';
+      }
+      
       // Restructure the data to match backend expectations
       const mediaData = {
-        // These are the exact field names expected by the backend
         media_id: type === 'book' ? 
           (media as OpenLibraryBook).key : 
           String((media as TMDBMovie | TMDBTVShow).id),
@@ -132,9 +156,15 @@ export function MediaTrackingProvider({ children }: { children: ReactNode }) {
           (media as OpenLibraryBook).title : 
           type === 'movie' ? (media as TMDBMovie).title : 
           (media as TMDBTVShow).name,
-        poster_path: type === 'book' ? 
-          `https://covers.openlibrary.org/b/id/${(media as OpenLibraryBook).cover_i}-M.jpg` : 
-          `https://image.tmdb.org/t/p/w500${(media as TMDBMovie | TMDBTVShow).poster_path}`
+        poster_path: posterPath,
+        image_url: coverImageUrl,  // Add this field
+        
+        // For books, also store raw cover data
+        cover_data: type === 'book' ? JSON.stringify({
+          cover_i: (media as any).cover_i,
+          cover_edition_key: (media as any).cover_edition_key,
+          isbn: (media as any).isbn
+        }) : null
       };
       
       console.log("➡️ API Request Data:", JSON.stringify(mediaData));

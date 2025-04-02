@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ const BookDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ratingUpdateCounter, setRatingUpdateCounter] = useState(0); // Add this line
+  const coverUrlRef = useRef<string | null>(null);
 
   const { 
     getAllMedia, 
@@ -63,6 +64,16 @@ const BookDetailPage = () => {
           ...trackedBook,
           key: trackedBook.mediaId
         });
+        
+        // NEW CODE: Extract cover ID from posterPath if present
+        if (trackedBook.posterPath && trackedBook.posterPath.includes('/b/id/')) {
+          const coverId = trackedBook.posterPath.split('/b/id/')[1].split('-')[0];
+          setBook(prev => ({
+            ...prev,
+            cover_i: coverId
+          }));
+        }
+        
         setLoading(false);
       } else {
         // FETCH FROM API DIRECTLY
@@ -84,7 +95,35 @@ const BookDetailPage = () => {
           console.log("Fetching book details for:", bookId);
           const bookDetails = await getBookDetails(bookId);
           
+          // NEW CODE: Make an additional API call to get editions (which contain cover info)
           if (bookDetails) {
+            try {
+              const editionsUrl = `https://openlibrary.org${bookDetails.key}/editions.json?limit=1`;
+              console.log("Fetching editions for cover info:", editionsUrl);
+              
+              const editionsResponse = await fetch(editionsUrl);
+              if (editionsResponse.ok) {
+                const editionsData = await editionsResponse.json();
+                
+                if (editionsData.entries && editionsData.entries.length > 0) {
+                  const firstEdition = editionsData.entries[0];
+                  
+                  // Add cover information from the edition
+                  if (firstEdition.covers && firstEdition.covers.length > 0) {
+                    bookDetails.cover_i = firstEdition.covers[0];
+                    console.log("Found cover ID:", firstEdition.covers[0]);
+                  }
+                  
+                  if (firstEdition.cover_i) {
+                    bookDetails.cover_i = firstEdition.cover_i;
+                    console.log("Found edition cover_i:", firstEdition.cover_i);
+                  }
+                }
+              }
+            } catch (editionError) {
+              console.error("Failed to fetch edition data for covers:", editionError);
+            }
+            
             setBook(bookDetails);
             setLoading(false);
           } else {
@@ -108,6 +147,8 @@ const BookDetailPage = () => {
   const handleAddBook = async (status: MediaStatus) => {
     if (!book) return;
     
+    const originalCoverId = book.cover_i; // Store this to preserve it
+    
     const bookData = {
       ...book,
       poster_path: book.cover_i || book.cover_edition_key
@@ -121,11 +162,12 @@ const BookDetailPage = () => {
       const newItem = getTrackedMediaItem(book.key, 'book');
       
       if (newItem) {
-        // Update the book object with the new status
-        setBook({
-          ...book,
-          status: newItem.status
-        });
+        // Update the book object with the new status AND preserve cover_i
+        setBook(prev => ({
+          ...prev,
+          status: newItem.status,
+          cover_i: originalCoverId // Make sure to preserve the cover ID
+        }));
       }
       
       toast({
@@ -217,6 +259,11 @@ const BookDetailPage = () => {
     );
   }
 
+  if (book?.cover_i && !coverUrlRef.current) {
+    coverUrlRef.current = `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`;
+    console.log("Set permanent cover URL:", coverUrlRef.current);
+  }
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -232,19 +279,23 @@ const BookDetailPage = () => {
         <div className="flex flex-col md:flex-row gap-8">
           <div className="md:w-1/3">
             <div className="rounded-lg overflow-hidden shadow-md">
-              {book.cover_edition_key ? (
+              {coverUrlRef.current ? (
                 <img 
-                  src={`https://covers.openlibrary.org/b/olid/${book.cover_edition_key}-L.jpg`}
+                  src={coverUrlRef.current}
                   alt={book.title}
                   className="w-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.onerror = null;
-                    target.src = 'https://via.placeholder.com/300x450?text=No+Poster';
+                    target.style.display = 'none';
+                    document.getElementById('cover-placeholder')!.style.display = 'flex';
                   }}
                 />
               ) : (
-                <div className="bg-gray-100 h-[450px] flex items-center justify-center">
+                <div 
+                  id="cover-placeholder"
+                  className="bg-gray-100 h-[450px] flex items-center justify-center"
+                >
                   <p className="text-gray-400">No poster available</p>
                 </div>
               )}
@@ -319,15 +370,66 @@ const BookDetailPage = () => {
               )}
             </div>
           </div>
-
+          
+          {/* Book details */}
           <div className="md:w-2/3">
             <h1 className="text-3xl font-bold mb-2">{book.title}</h1>
             
-            {book.authors && (
-              <p className="text-gray-500 mb-6">
-                Author: {book.authors.map((author: any) => author.name).join(', ')}
-              </p>
+            {/* Author information - show name from either source */}
+            {(book.author_name || book.authors) && (
+              <div className="mb-4">
+                <h3 className="font-semibold">Author(s)</h3>
+                <p>{book.author_name ? book.author_name.join(', ') : 'Unknown'}</p>
+              </div>
             )}
+            
+            {/* Publication date with standardized wording */}
+            {(book.first_publish_date || book.publish_date || book.first_publish_year) && (
+              <div className="mb-4">
+                <h3 className="font-semibold">First Published</h3>
+                <p>
+                  {book.first_publish_date || 
+                   (book.publish_date && (Array.isArray(book.publish_date) ? book.publish_date[0] : book.publish_date)) ||
+                   book.first_publish_year}
+                </p>
+              </div>
+            )}
+            
+            {/* Publisher information */}
+            {book.publisher && (
+              <div className="mb-4">
+                <h3 className="font-semibold">Publisher</h3>
+                <p>{Array.isArray(book.publisher) ? book.publisher.join(', ') : book.publisher}</p>
+              </div>
+            )}
+            
+            {/* Subjects display */}
+            {(book.subjects?.length > 0) && (
+              <div className="mb-4">
+                <h3 className="font-semibold">Subjects</h3>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {book.subjects.slice(0, 10).map((subject: string, i: number) => (
+                    <span key={i} className="bg-gray-100 px-2 py-1 rounded text-xs">
+                      {subject}
+                    </span>
+                  ))}
+                  {book.subjects.length > 10 && (
+                    <span className="text-xs text-gray-500">+{book.subjects.length - 10} more</span>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Debug information - keep this for development */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-md">
+              <h3 className="font-semibold text-sm mb-2">Available Book Data (Debug):</h3>
+              <details>
+                <summary className="text-xs text-blue-500 cursor-pointer">Show Raw Data</summary>
+                <pre className="text-xs overflow-x-auto mt-2">
+                  {JSON.stringify(book, null, 2)}
+                </pre>
+              </details>
+            </div>
           </div>
         </div>
       </div>

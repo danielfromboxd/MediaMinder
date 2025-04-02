@@ -71,8 +71,9 @@ const TrackerPage = () => {
   }, [trackedMedia, filter, mediaTypeFilter]);
 
   const getMediaImageSrc = (media: TrackedMedia) => {
-    if (media.type === 'book' && media.posterPath) {
-      return getBookCoverUrl(Number(media.posterPath));
+    if (media.type === 'book') {
+      // The posterPath is already a complete URL for books, so use it directly
+      return media.posterPath;
     } else if ((media.type === 'movie' || media.type === 'tvshow') && media.posterPath) {
       return getImageUrl(media.posterPath);
     }
@@ -150,10 +151,15 @@ const TrackerPage = () => {
                           src={getMediaImageSrc(media)} 
                           alt={media.title}
                           className="h-full object-cover w-full"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null;
+                            target.src = 'https://via.placeholder.com/150?text=No+Image';
+                          }}
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full text-gray-400">
-                          {getMediaTypeIcon(media.type)}
+                          <p className="text-sm text-center p-2">No cover available</p>
                         </div>
                       )}
                     </div>

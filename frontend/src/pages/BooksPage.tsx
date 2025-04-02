@@ -3,7 +3,7 @@ import Sidebar from '@/components/Sidebar';
 import SearchInput from '@/components/SearchInput';
 import { Button } from "@/components/ui/button";
 import { useBookSearch } from '@/hooks/useOpenLibrary';
-import { getBookCoverUrl } from '@/services/openLibraryService';
+import { getBookCoverUrl, getBookDetails } from '@/services/openLibraryService';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
 import { toast } from '@/components/ui/use-toast';
 import StarRating from '@/components/StarRating';
@@ -29,7 +29,10 @@ const BooksPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
   const [ratingUpdateCounter, setRatingUpdateCounter] = useState(0);
-  
+  const [detailedBookData, setDetailedBookData] = useState<any>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [bookCache, setBookCache] = useState<Record<string, any>>({});
+
   const { data, isLoading, error } = useBookSearch(searchQuery, isSearching);
   const { 
     addMedia, 
@@ -45,23 +48,68 @@ const BooksPage = () => {
     setIsSearching(true);
   };
 
-  const handleBookClick = (book: any) => {
+  const handleBookClick = async (book: any) => {
     setSelectedBook(book);
+    setIsLoadingDetails(true);
+    
+    // Show the dialog immediately with basic information
+    setDetailedBookData({
+      ...book,
+      // Use any data we already have
+      title: book.title,
+      author_name: book.author_name || [],
+      cover_i: book.cover_i
+    });
+    
+    try {
+      // Get the full book ID
+      const bookId = book.key;
+      console.log("Fetching details for:", bookId);
+      
+      // Load the full details in the background
+      getBookDetails(bookId)
+        .then(bookDetails => {
+          setDetailedBookData(prev => ({
+            ...prev,
+            ...bookDetails,
+            // Preserve the search data fields that might be more reliable
+            title: prev.title || bookDetails.title,
+            author_name: prev.author_name || bookDetails.author_name,
+            cover_i: prev.cover_i || bookDetails.cover_i
+          }));
+          setIsLoadingDetails(false);
+        })
+        .catch(err => {
+          console.error("Failed to load details:", err);
+          setIsLoadingDetails(false);
+        });
+    } catch (error) {
+      console.error("Error setting up book details fetch:", error);
+      setIsLoadingDetails(false);
+    }
   };
 
   const closeDialog = () => {
     setSelectedBook(null);
+    setDetailedBookData(null);
   };
 
   const handleAddBook = async (book: any, status: MediaStatus) => {
-    // Modify the book object to include cover_i as poster_path for tracking
-    const bookWithPoster = {
+    // Store all possible cover sources
+    const bookWithCoverData = {
       ...book,
-      poster_path: book.cover_i
+      // Store cover IDs in posterPath for backward compatibility
+      poster_path: book.cover_i || (book.cover_edition_key ? `olid:${book.cover_edition_key}` : null),
+      // Store raw cover data for better cover loading
+      coverData: JSON.stringify({
+        cover_i: book.cover_i,
+        cover_edition_key: book.cover_edition_key,
+        isbn: book.isbn
+      })
     };
     
     // Await the addMedia operation
-    await addMedia(bookWithPoster, 'book', status);
+    await addMedia(bookWithCoverData, 'book', status);
     
     toast({
       title: "Book added",
@@ -384,55 +432,84 @@ const BooksPage = () => {
 
                   <div className="md:w-2/3">
                     <div className="space-y-4">
-                      {selectedBook.author_name && (
+                      {/* Author information - always visible immediately */}
+                      {(detailedBookData?.author_name || selectedBook.author_name) && (
                         <div>
                           <h3 className="font-semibold">Author(s)</h3>
-                          <p>{selectedBook.author_name.join(', ')}</p>
+                          <p>{(detailedBookData?.author_name || selectedBook.author_name).join(', ')}</p>
                         </div>
                       )}
                       
-                      {selectedBook.first_publish_year && (
+                      {/* Publication date - always visible immediately */}
+                      {(selectedBook.first_publish_year) && (
                         <div>
                           <h3 className="font-semibold">First Published</h3>
                           <p>{selectedBook.first_publish_year}</p>
                         </div>
                       )}
                       
-                      {selectedBook.publisher && (
-                        <div>
-                          <h3 className="font-semibold">Publisher</h3>
-                          <p>{Array.isArray(selectedBook.publisher) ? selectedBook.publisher.join(', ') : selectedBook.publisher}</p>
+                      {/* Loading indicator for additional details */}
+                      {isLoadingDetails && (
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4"></div>
+                          <div className="h-4 bg-gray-100 rounded animate-pulse w-1/2"></div>
+                          <div className="h-4 bg-gray-100 rounded animate-pulse w-5/6"></div>
                         </div>
                       )}
                       
-                      {selectedBook.subject && (
-                        <div>
-                          <h3 className="font-semibold">Subjects</h3>
-                          <div className="flex flex-wrap gap-1">
-                            {selectedBook.subject.slice(0, 10).map((subject: string, i: number) => (
-                              <span key={i} className="bg-gray-100 px-2 py-1 rounded text-xs">
-                                {subject}
-                              </span>
-                            ))}
-                            {selectedBook.subject.length > 10 && (
-                              <span className="text-xs text-gray-500">+{selectedBook.subject.length - 10} more</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* If we have more detailed info about the book */}
-                      {selectedBook.description && (
-                        <div>
-                          <h3 className="font-semibold">Description</h3>
-                          <p className="text-gray-700">
-                            {typeof selectedBook.description === 'string' 
-                              ? selectedBook.description 
-                              : Array.isArray(selectedBook.description)
-                                ? selectedBook.description[0]
-                                : selectedBook.description.value || 'No description available.'}
-                          </p>
-                        </div>
+                      {/* Additional details that load later */}
+                      {!isLoadingDetails && (
+                        <>
+                          {/* Updated publish date with full info */}
+                          {(detailedBookData?.first_publish_date || detailedBookData?.publish_date) && (
+                            <div>
+                              <h3 className="font-semibold">First Published</h3>
+                              <p>
+                                {detailedBookData?.first_publish_date || 
+                                 (detailedBookData?.publish_date && (Array.isArray(detailedBookData.publish_date) ? 
+                                   detailedBookData.publish_date[0] : detailedBookData.publish_date))}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Publisher information */}
+                          {detailedBookData?.publisher && (
+                            <div>
+                              <h3 className="font-semibold">Publisher</h3>
+                              <p>{Array.isArray(detailedBookData.publisher) ? 
+                                detailedBookData.publisher.join(', ') : 
+                                detailedBookData.publisher}</p>
+                            </div>
+                          )}
+                          
+                          {/* Subjects display */}
+                          {(detailedBookData?.subjects || detailedBookData?.subject) && (
+                            <div>
+                              <h3 className="font-semibold">Subjects</h3>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {(detailedBookData?.subjects || detailedBookData?.subject || [])
+                                  .slice(0, 10)
+                                  .map((subject: string, i: number) => (
+                                    <span key={i} className="bg-gray-100 px-2 py-1 rounded text-xs">
+                                      {subject}
+                                    </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Description */}
+                          {detailedBookData?.description && (
+                            <div>
+                              <h3 className="font-semibold">Description</h3>
+                              <p className="text-gray-700">
+                                {typeof detailedBookData.description === 'string' 
+                                  ? detailedBookData.description 
+                                  : detailedBookData.description.value || 'No description available.'}
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

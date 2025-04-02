@@ -5,6 +5,64 @@
 
 const OPEN_LIBRARY_API_URL = "https://openlibrary.org";
 
+// Create a persistent cache that survives page refreshes
+const getSessionCache = () => {
+  try {
+    const cache = sessionStorage.getItem('openLibraryCache');
+    return cache ? JSON.parse(cache) : {};
+  } catch (err) {
+    return {};
+  }
+};
+
+const saveToSessionCache = (key: string, data: any) => {
+  try {
+    const cache = getSessionCache();
+    cache[key] = {
+      data,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem('openLibraryCache', JSON.stringify(cache));
+  } catch (err) {
+    console.warn('Failed to save to session cache', err);
+  }
+};
+
+const getFromSessionCache = (key: string, maxAgeMs = 3600000) => { // Default 1 hour
+  try {
+    const cache = getSessionCache();
+    const item = cache[key];
+    if (item && Date.now() - item.timestamp < maxAgeMs) {
+      return item.data;
+    }
+    return null;
+  } catch (err) {
+    return null;
+  }
+};
+
+// Helper function to use a CORS proxy if needed
+const fetchWithProxy = async (url: string): Promise<Response> => {
+  try {
+    // Try direct fetch first
+    const directResponse = await fetch(url);
+    
+    if (directResponse.ok) {
+      return directResponse;
+    }
+    
+    // If direct request fails with CORS or 5xx error, try with a different proxy
+    // AllOrigins is generally more reliable than cors-anywhere
+    const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    console.log("Retrying with CORS proxy:", corsProxyUrl);
+    
+    return await fetch(corsProxyUrl);
+  } catch (error) {
+    console.error("Fetch failed:", error);
+    throw error;
+  }
+};
+
 export interface OpenLibraryBook {
   key: string;
   title: string;
@@ -25,75 +83,207 @@ export interface OpenLibrarySearchResponse {
   docs: OpenLibraryBook[];
 }
 
+// Make the searchBooks function use caching
 export const searchBooks = async (query: string): Promise<OpenLibrarySearchResponse> => {
-  const response = await fetch(
-    `${OPEN_LIBRARY_API_URL}/search.json?q=${encodeURIComponent(query)}&limit=10`
-  );
-
-  if (!response.ok) {
+  const cacheKey = `search_${query}`;
+  const cachedData = getFromSessionCache(cacheKey, 600000); // 10 minute cache
+  
+  if (cachedData) {
+    console.log("Using cached search results for:", query);
+    return cachedData;
+  }
+  
+  const url = `${OPEN_LIBRARY_API_URL}/search.json?q=${encodeURIComponent(query)}&limit=10`;
+  
+  try {
+    // First try without proxy - faster if it works
+    const response = await fetch(url);
+    
+    if (response.ok) {
+      const data = await response.json();
+      saveToSessionCache(cacheKey, data);
+      return data;
+    }
+    
+    // Fall back to proxy if needed
+    console.log("Direct API call failed, using proxy");
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const proxyResponse = await fetch(proxyUrl);
+    
+    if (!proxyResponse.ok) {
+      throw new Error("Failed to search books");
+    }
+    
+    const data = await proxyResponse.json();
+    saveToSessionCache(cacheKey, data);
+    return data;
+  } catch (error) {
+    console.error("Error searching books:", error);
     throw new Error("Failed to search books");
   }
-
-  return response.json();
 };
 
-export const getBookCoverUrl = (bookData: any, size: "S" | "M" | "L" = "M"): string | null => {
-  // Nothing to work with
-  if (!bookData) return null;
+/**
+ * Get a book cover URL with multiple fallback options
+ * @param bookOrId Either a book object or cover ID
+ * @param size Size of the cover image (S, M, L)
+ * @returns URL to the book cover image
+ */
+export const getBookCoverUrl = (bookOrId: any, size: 'S' | 'M' | 'L' = 'M'): string => {
+  // Set default placeholder URL
+  const placeholder = 'https://via.placeholder.com/200x300?text=No+Cover';
   
-  // PRIORITY 1: Use cover_i (internal ID) - no rate limiting
-  if (bookData.cover_i || (typeof bookData === 'number')) {
-    const coverId = typeof bookData === 'number' ? bookData : bookData.cover_i;
-    return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
-  }
-  
-  // PRIORITY 2: Use OLID - no rate limiting
-  if (bookData.key && typeof bookData.key === 'string') {
-    // Extract OLID from /works/OL12345W format
-    const olid = bookData.key.split('/').pop();
-    if (olid && olid.startsWith('OL')) {
-      return `https://covers.openlibrary.org/b/olid/${olid}-${size}.jpg`;
+  try {
+    // Case 1: String ID (could be numeric string or OLID)
+    if (typeof bookOrId === 'string') {
+      // If it looks like an OLID
+      if (bookOrId.startsWith('OL') && (bookOrId.endsWith('M') || bookOrId.endsWith('W'))) {
+        return `https://covers.openlibrary.org/b/olid/${bookOrId}-${size}.jpg`;
+      }
+      // Otherwise treat as a numeric ID
+      return `https://covers.openlibrary.org/b/id/${bookOrId}-${size}.jpg`;
     }
+    
+    // Case 2: Number ID (direct cover_i)
+    if (typeof bookOrId === 'number') {
+      return `https://covers.openlibrary.org/b/id/${bookOrId}-${size}.jpg`;
+    }
+    
+    // Case 3: Book Object with imageUrl already calculater
+    if (bookOrId && typeof bookOrId === 'object' && bookOrId.imageUrl) {
+      return bookOrId.imageUrl;
+    }
+    
+    // Case 4: Book Object - try multiple sources in priority order
+    if (bookOrId && typeof bookOrId === 'object') {
+      // Check cover_i (most reliable from search results)
+      if (bookOrId.cover_i) {
+        return `https://covers.openlibrary.org/b/id/${bookOrId.cover_i}-${size}.jpg`;
+      }
+      
+      // Check cover_edition_key (reliable from book details)
+      if (bookOrId.cover_edition_key) {
+        return `https://covers.openlibrary.org/b/olid/${bookOrId.cover_edition_key}-${size}.jpg`;
+      }
+      
+      // Check for ISBN (another option)
+      if (bookOrId.isbn) {
+        const isbn = Array.isArray(bookOrId.isbn) ? bookOrId.isbn[0] : bookOrId.isbn;
+        return `https://covers.openlibrary.org/b/isbn/${isbn}-${size}.jpg`;
+      }
+      
+      // Check posterPath (our saved property)
+      if (bookOrId.posterPath) {
+        // Check if posterPath contains "olid:" prefix
+        if (typeof bookOrId.posterPath === 'string' && bookOrId.posterPath.startsWith('olid:')) {
+          const olid = bookOrId.posterPath.replace('olid:', '');
+          return `https://covers.openlibrary.org/b/olid/${olid}-${size}.jpg`;
+        }
+        return `https://covers.openlibrary.org/b/id/${bookOrId.posterPath}-${size}.jpg`;
+      }
+    }
+    
+    // Return placeholder if no valid source found
+    return placeholder;
+  } catch (error) {
+    console.error("Error generating book cover URL:", error);
+    return placeholder;
   }
-  
-  // Alternative: if book directly has OLID
-  if (bookData.cover_edition_key) {
-    return `https://covers.openlibrary.org/b/olid/${bookData.cover_edition_key}-${size}.jpg`;
-  }
-  
-  // PRIORITY 3: ISBN (rate-limited)
-  if (bookData.isbn && bookData.isbn[0]) {
-    return `https://covers.openlibrary.org/b/isbn/${bookData.isbn[0]}-${size}.jpg`;
-  }
-  
-  // No viable cover source found
-  return null;
 };
 
-export const getBookDetails = async (key: string): Promise<any> => {
-  // Normalize the key format
-  let workKey = key;
-  
-  // If it doesn't start with /works/ but looks like an OL ID, add the prefix
-  if (!workKey.startsWith('/works/') && workKey.match(/^OL\d+W$/)) {
-    workKey = `/works/${workKey}`;
+/**
+ * Get book details by ID
+ * @param bookId OpenLibrary book ID
+ * @returns Book details
+ */
+export const getBookDetails = async (bookId: string): Promise<any> => {
+  // Clean the book ID if necessary
+  if (bookId.startsWith('book_')) {
+    bookId = bookId.replace('book_', '');
+  }
+  if (!bookId.startsWith('/')) {
+    bookId = `/works/${bookId}`;
   }
   
-  // Remove any leading slash to prevent double slashes in the URL
-  if (workKey.startsWith('/')) {
-    workKey = workKey.substring(1);
+  const cacheKey = `details_${bookId}`;
+  const cachedData = getFromSessionCache(cacheKey); // Unlimited cache duration for book details
+  
+  if (cachedData) {
+    console.log("Using cached book details for:", bookId);
+    return cachedData;
   }
   
-  const response = await fetch(
-    `${OPEN_LIBRARY_API_URL}/${workKey}.json`
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch book details for ${key}`);
+  try {
+    // Simplified to a single API call - just get the essential data
+    const url = `https://openlibrary.org${bookId}.json`;
+    let response;
+    
+    // Try direct fetch first
+    try {
+      response = await fetch(url);
+      if (!response.ok) throw new Error("Direct fetch failed");
+    } catch (err) {
+      // Fall back to proxy
+      console.log("Using proxy for book details");
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      response = await fetch(proxyUrl);
+    }
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch book details');
+    }
+    
+    const bookData = await response.json();
+    
+    // Add author names via a simplified approach
+    if (bookData.authors && bookData.authors.length > 0) {
+      // Extract author names from the author references if possible
+      // Instead of making individual API calls, set placeholder names
+      // and update them asynchronously
+      bookData.author_name = bookData.authors.map((author: any) => 
+        author.name || "Unknown Author"
+      );
+      
+      // Fire and forget - update the cache when author data comes in
+      setTimeout(async () => {
+        try {
+          const authorPromises = bookData.authors
+            .filter((author: any) => author.author && author.author.key)
+            .map(async (authorRef: any) => {
+              const authorKey = authorRef.author.key;
+              try {
+                const authorUrl = `https://openlibrary.org${authorKey}.json`;
+                const authorResponse = await fetch(authorUrl);
+                if (authorResponse.ok) {
+                  const authorData = await authorResponse.json();
+                  return authorData.name || authorData.personal_name;
+                }
+              } catch (err) {
+                console.warn("Author fetch failed:", err);
+              }
+              return null;
+            });
+          
+          const authorNames = (await Promise.all(authorPromises)).filter(Boolean);
+          if (authorNames.length > 0) {
+            bookData.author_name = authorNames;
+            saveToSessionCache(cacheKey, bookData);
+          }
+        } catch (err) {
+          console.warn("Could not fetch author details:", err);
+        }
+      }, 0);
+    }
+    
+    saveToSessionCache(cacheKey, bookData);
+    return bookData;
+  } catch (error) {
+    console.error('Error fetching book details:', error);
+    throw error;
   }
-
-  return response.json();
 };
+
+// Old popular books
 /*
 export const getTrendingBooks = async (): Promise<OpenLibraryBook[]> => {
   // OpenLibrary doesn't have a proper trending API, so we'll get popular books by subject
@@ -121,9 +311,8 @@ export const getRecentBooks = async (): Promise<OpenLibraryBook[]> => {
   
   try {
     // Try the newest additions via recent changes first
-    const recentChangesResponse = await fetch(
-      `${OPEN_LIBRARY_API_URL}/subjects/new_releases.json?limit=30`
-    );
+    const recentChangesUrl = `${OPEN_LIBRARY_API_URL}/subjects/new_releases.json?limit=30`;
+    const recentChangesResponse = await fetchWithProxy(recentChangesUrl);
 
     if (recentChangesResponse.ok) {
       const data = await recentChangesResponse.json();
@@ -144,9 +333,8 @@ export const getRecentBooks = async (): Promise<OpenLibraryBook[]> => {
     }
     
     // Fallback: try trending books and filter by year
-    const trendingResponse = await fetch(
-      `${OPEN_LIBRARY_API_URL}/trending/daily.json?limit=50`
-    );
+    const trendingUrl = `${OPEN_LIBRARY_API_URL}/trending/daily.json?limit=50`;
+    const trendingResponse = await fetchWithProxy(trendingUrl);
     
     if (trendingResponse.ok) {
       const data = await trendingResponse.json();
@@ -174,9 +362,8 @@ export const getRecentBooks = async (): Promise<OpenLibraryBook[]> => {
     }
     
     // Last resort: search for books with the current year in title
-    const yearSearchResponse = await fetch(
-      `${OPEN_LIBRARY_API_URL}/search.json?q=${currentYear}&limit=10`
-    );
+    const yearSearchUrl = `${OPEN_LIBRARY_API_URL}/search.json?q=${currentYear}&limit=10`;
+    const yearSearchResponse = await fetchWithProxy(yearSearchUrl);
     
     if (yearSearchResponse.ok) {
       const data = await yearSearchResponse.json();
@@ -198,9 +385,8 @@ const getFallbackBooks = async (): Promise<OpenLibraryBook[]> => {
     const subjects = ['fiction', 'fantasy', 'bestseller', 'new'];
     const randomSubject = subjects[Math.floor(Math.random() * subjects.length)];
     
-    const response = await fetch(
-      `${OPEN_LIBRARY_API_URL}/subjects/${randomSubject}.json?limit=10`
-    );
+    const url = `${OPEN_LIBRARY_API_URL}/subjects/${randomSubject}.json?limit=10`;
+    const response = await fetchWithProxy(url);
     
     if (!response.ok) {
       throw new Error("Fallback book fetch failed");
