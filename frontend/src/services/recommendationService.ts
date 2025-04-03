@@ -375,10 +375,13 @@ const getRecommendedBooks = async (
       const subject = encodeURIComponent(topSubjects[i].name);
       
       try {
-        // Use fetchWithProxy instead of direct fetch
-        const response = await fetchWithProxy(
+        // Use a more reliable CORS proxy approach
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
           `https://openlibrary.org/subjects/${subject.toLowerCase()}.json?limit=10`
-        );
+        )}`;
+        
+        console.log(`Fetching books for subject: ${subject} via proxy`);
+        const response = await fetch(proxyUrl);
         
         if (response.ok) {
           const data = await response.json();
@@ -397,6 +400,36 @@ const getRecommendedBooks = async (
         console.warn(`Error fetching books for subject ${subject}:`, error);
         // Continue with next subject even if one fails
       }
+    }
+    
+    // If we couldn't get any books via subjects, use fallback data
+    if (results.length === 0) {
+      return [
+        {
+          key: "/works/OL82586W",
+          title: "Project Hail Mary",
+          first_publish_year: 2021,
+          cover_i: 12522399
+        },
+        {
+          key: "/works/OL27464W",
+          title: "The Hobbit",
+          first_publish_year: 1937,
+          cover_i: 10480949
+        },
+        {
+          key: "/works/OL7353617M",
+          title: "The Midnight Library",
+          first_publish_year: 2020,
+          cover_i: 12979424
+        },
+        {
+          key: "/works/OL24886774M",
+          title: "Anxious People",
+          first_publish_year: 2019,
+          cover_i: 10601847
+        }
+      ];
     }
     
     // Filter out already tracked books
@@ -539,7 +572,7 @@ export const generateRecommendations = async (
     
     // Update cache
     lastFetchTimestamp = now;
-    cachedRecommendations = combinedRecs.slice(0, 8); // Limit to 8 recommendations
+    cachedRecommendations = combinedRecs.slice(0, 20); // Limit to 8 recommendations
     
     return cachedRecommendations;
   } catch (error) {

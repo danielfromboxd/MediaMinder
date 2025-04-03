@@ -10,6 +10,7 @@ import StarRating from '@/components/StarRating';
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecommendations } from '@/hooks/useRecommendations';
+import useResponsiveItemCount from '@/hooks/useResponsiveItemCount';
 
 const HomePage = () => {
   const { isLoggedIn, user } = useAuth();
@@ -45,6 +46,27 @@ const HomePage = () => {
     return saved === 'true'; // Convert string to boolean
   });
 
+  // Add these state variables near the top of the HomePage component:
+
+  // Section visibility states with localStorage persistence
+  const [recommendationsCollapsed, setRecommendationsCollapsed] = useState(() =>
+    localStorage.getItem('recommendationsCollapsed') === 'true');
+    
+  const [wantToViewCollapsed, setWantToViewCollapsed] = useState(() =>
+    localStorage.getItem('wantToViewCollapsed') === 'true');
+    
+  const [inProgressCollapsed, setInProgressCollapsed] = useState(() =>
+    localStorage.getItem('inProgressCollapsed') === 'true');
+    
+  const [finishedCollapsed, setFinishedCollapsed] = useState(() =>
+    localStorage.getItem('finishedCollapsed') === 'true');
+
+  // Toggle functions for each section
+  const toggleSection = (section: string, state: boolean, setter: (value: boolean) => void) => {
+    setter(state);
+    localStorage.setItem(`${section}Collapsed`, state.toString());
+  };
+
   // Add this function to handle toggling:
   const toggleNewQuarter = () => {
     const newValue = !newQuarterCollapsed;
@@ -52,6 +74,8 @@ const HomePage = () => {
     // Save to localStorage
     localStorage.setItem('newQuarterCollapsed', newValue.toString());
   };
+
+  const itemCount = useResponsiveItemCount();
 
   // Update the fetchNewItems function
   const fetchNewItems = async () => {
@@ -108,24 +132,29 @@ const HomePage = () => {
         };
       });
       
-      // Increase from 6 to 8 total items with balanced distribution
-      const maxItems = 8; // Changed from 6 to 8
+      // Use dynamic item count instead of fixed number
+      const maxItems = itemCount;
       let combined = [];
       
-      // Target distribution: 2 books, 3 series, 3 movies
-      // First, add up to 2 books
-      const booksToAdd = Math.min(formattedBooks.length, 2);
+      // Dynamically adjust distribution based on available count
+      const idealBookCount = Math.max(1, Math.floor(maxItems * 0.25)); // ~25% books
+      const idealShowCount = Math.max(1, Math.floor(maxItems * 0.375)); // ~37.5% shows
+      const idealMovieCount = Math.max(1, Math.floor(maxItems * 0.375)); // ~37.5% movies
+      
+      // Add books, shows and movies with the calculated ideal counts
+      // First, add up to idealBookCount books
+      const booksToAdd = Math.min(formattedBooks.length, idealBookCount);
       combined.push(...formattedBooks.slice(0, booksToAdd));
       
-      // Then add up to 3 TV shows
-      const showsToAdd = Math.min(formattedShows.length, 3);
+      // Then add up to idealShowCount TV shows
+      const showsToAdd = Math.min(formattedShows.length, idealShowCount);
       combined.push(...formattedShows.slice(0, showsToAdd));
       
-      // Then add up to 3 movies
-      const moviesToAdd = Math.min(formattedMovies.length, 3);
+      // Then add up to idealMovieCount movies
+      const moviesToAdd = Math.min(formattedMovies.length, idealMovieCount);
       combined.push(...formattedMovies.slice(0, moviesToAdd));
       
-      // If we still don't have 8 items, fill with any available media
+      // If we still don't have maxItems, fill with any available media
       const remainingSlots = maxItems - combined.length;
       if (remainingSlots > 0) {
         // Add any remaining books
@@ -166,13 +195,16 @@ const HomePage = () => {
     }
   };
 
-  // Fetch new content when component mounts
-  useEffect(() => {
-    fetchNewItems();
-  }, []);
+  // Update the useEffect for fetching new items:
+
+// Replace your existing useEffect for fetchNewItems with:
+useEffect(() => {
+  // This will run on mount and whenever itemCount changes
+  fetchNewItems();
+}, [itemCount]); // Add itemCount as dependency
 
   const { recommendations, isLoading: isLoadingRecommendations, refresh: refreshRecommendations } = 
-    useRecommendations();
+    useRecommendations(false, itemCount);
 
   const getMediaImageSrc = (media: any) => {
     if (media.type === 'book') {
@@ -253,25 +285,50 @@ const getMediaLink = (media: any) => {
   return '/home';
 };
 
-  const renderMediaList = (mediaList: any[], title: string, icon: React.ReactNode) => {
-    if (mediaList.length === 0) {
-      return null;
-    }
+  // Replace the renderMediaList function:
 
-    return (
-      <div className="mt-8">
-        <div className="flex items-center gap-2 mb-4">
+const renderMediaList = (mediaList: any[], title: string, icon: React.ReactNode, 
+                        isCollapsed: boolean, setCollapsed: (value: boolean) => void, 
+                        sectionId: string) => {
+  if (mediaList.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
           {icon}
           <h2 className="text-2xl font-semibold">{title}</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <button 
+          onClick={() => toggleSection(sectionId, !isCollapsed, setCollapsed)}
+          className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+          title={isCollapsed ? "Show section" : "Hide section"}
+        >
+          {isCollapsed ? (
+            <>
+              <EyeIcon className="h-4 w-4 mr-1" />
+              Show
+            </>
+          ) : (
+            <>
+              <EyeOff className="h-4 w-4 mr-1" />
+              Hide
+            </>
+          )}
+        </button>
+      </div>
+      
+      {!isCollapsed && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
           {mediaList.map(media => (
             <Link 
               key={media.id} 
               to={getMediaLink(media)}
               className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="h-40 bg-gray-100 flex items-center justify-center">
+              <div className="aspect-ratio-[2/3] w-full bg-gray-100 flex items-center justify-center relative">
                 {media.posterPath ? (
                   <img 
                     src={getMediaImageSrc(media)} 
@@ -280,11 +337,15 @@ const getMediaLink = (media: any) => {
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.onerror = null;
-                      target.src = 'https://via.placeholder.com/150?text=No+Image';
+                      target.src = "https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+image+available";
                     }}
                   />
                 ) : (
-                  <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
+                  <img 
+                    src="https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+image+available"
+                    alt="No image available"
+                    className="h-full w-full object-contain"
+                  />
                 )}
               </div>
               <div className="p-3">
@@ -299,9 +360,10 @@ const getMediaLink = (media: any) => {
             </Link>
           ))}
         </div>
-      </div>
-    );
-  };
+      )}
+    </div>
+  );
+};
 
   return (
     <div className="flex min-h-screen">
@@ -400,7 +462,7 @@ const getMediaLink = (media: any) => {
             <>
               {isLoadingNewQuarter ? (
                 // Show loading skeleton while data is being fetched
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
                   {[1, 2, 3, 4].map(i => (
                     <Card key={i} className="overflow-hidden">
                       <Skeleton className="h-48 w-full" />
@@ -412,14 +474,14 @@ const getMediaLink = (media: any) => {
                   ))}
                 </div>
               ) : newQuarterItems.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
                   {newQuarterItems.map(media => (
                     <Link 
                       key={media.id} 
                       to={getMediaLink(media)}
                       className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                     >
-                      <div className="relative h-40 bg-gray-100 flex items-center justify-center">
+                      <div className="relative aspect-ratio-[2/3] w-full bg-gray-100 flex items-center justify-center">
                         {media.imageUrl ? (
                           <img 
                             src={media.imageUrl} 
@@ -428,11 +490,15 @@ const getMediaLink = (media: any) => {
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.onerror = null;
-                              target.src = 'https://via.placeholder.com/150?text=No+Image';
+                              target.src = "https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+image+available";
                             }}
                           />
                         ) : (
-                          <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
+                          <img 
+                            src="https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+image+available"
+                            alt="No image available"
+                            className="h-full w-full object-contain"
+                          />
                         )}
                         {/* Release year */}
                         <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
@@ -458,101 +524,147 @@ const getMediaLink = (media: any) => {
           )}
         </div>
         
-        {isLoggedIn && (
-          <div className="mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-6 w-6 text-amber-500" />
-                <h2 className="text-2xl font-semibold">Recommended for You</h2>
-              </div>
-              <button 
-                onClick={() => refreshRecommendations()}
-                className="text-sm text-blue-500 hover:underline flex items-center"
-                disabled={isLoadingRecommendations}
+        {isLoggedIn && recommendations.length > 0 && (
+  <div className="mt-8">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-6 w-6 text-amber-500" />
+        <h2 className="text-2xl font-semibold">Recommended for You</h2>
+      </div>
+      <div className="flex items-center">
+        <button 
+          onClick={() => refreshRecommendations()}
+          className="text-sm text-blue-500 hover:underline flex items-center mr-4"
+          disabled={isLoadingRecommendations}
+        >
+          <RefreshCw className="h-4 w-4 mr-1" />
+          Refresh
+        </button>
+        <button 
+          onClick={() => toggleSection('recommendations', !recommendationsCollapsed, setRecommendationsCollapsed)}
+          className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+          title={recommendationsCollapsed ? "Show section" : "Hide section"}
+        >
+          {recommendationsCollapsed ? (
+            <>
+              <EyeIcon className="h-4 w-4 mr-1" />
+              Show
+            </>
+          ) : (
+            <>
+              <EyeOff className="h-4 w-4 mr-1" />
+              Hide
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+    
+    {!recommendationsCollapsed && (
+      <>
+        {isLoadingRecommendations ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <Card key={i} className="overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <CardContent className="p-4">
+                  <Skeleton className="h-4 w-3/4 mb-2" />
+                  <Skeleton className="h-3 w-1/3" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 auto-rows-fr">
+            {recommendations.map(media => (
+              <Link 
+                key={media.id} 
+                to={getMediaLink(media)}
+                className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Refresh
-              </button>
-            </div>
-            
-            {isLoadingRecommendations ? (
-              // Show loading skeleton while recommendations are being fetched
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map(i => (
-                  <Card key={i} className="overflow-hidden">
-                    <Skeleton className="h-48 w-full" />
-                    <CardContent className="p-4">
-                      <Skeleton className="h-4 w-3/4 mb-2" />
-                      <Skeleton className="h-3 w-1/3" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : recommendations.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {recommendations.map(media => (
-                  <Link 
-                    key={media.id} 
-                    to={getMediaLink(media)}
-                    className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div className="relative h-40 bg-gray-100 flex items-center justify-center">
-                      {media.imageUrl ? (
-                        <img 
-                          src={media.imageUrl} 
-                          alt={media.title}
-                          className="h-full object-cover w-full"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.onerror = null;
-                            target.src = 'https://via.placeholder.com/150?text=No+Image';
-                          }}
-                        />
-                      ) : (
-                        <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
-                      )}
-                      {/* Relevance score */}
-                      <div className="absolute top-2 right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
-                        {Math.round(media.relevance * 100)}% Match
-                      </div>
+                <div className="relative aspect-ratio-[2/3] w-full bg-gray-100 flex items-center justify-center">
+                  {media.imageUrl ? (
+                    <img 
+                      src={media.imageUrl} 
+                      alt={media.title}
+                      className="h-full object-cover w-full"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null;
+                        target.src = "https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+image+available";
+                      }}
+                    />
+                  ) : (
+                    <img 
+                      src="https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+image+available"
+                      alt="No image available"
+                      className="h-full w-full object-contain"
+                    />
+                  )}
+                  {/* Relevance score */}
+                  <div className="absolute top-2 right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
+                    {Math.round(media.relevance * 100)}% Match
+                  </div>
+                </div>
+                <div className="p-3">
+                  <h3 className="font-semibold text-md line-clamp-1">{media.title}</h3>
+                  <div className="mt-1 flex items-center justify-between">
+                    <div className="text-xs flex items-center">
+                      {media.type === 'book' ? 'Book' : media.type === 'movie' ? 'Movie' : 'TV Show'}
+                      {media.year && <span className="ml-1">• {media.year}</span>}
                     </div>
-                    <div className="p-3">
-                      <h3 className="font-semibold text-md line-clamp-1">{media.title}</h3>
-                      <div className="mt-1 flex items-center justify-between">
-                        <div className="text-xs flex items-center">
-                          {media.type === 'book' ? 'Book' : media.type === 'movie' ? 'Movie' : 'TV Show'}
-                          {media.year && <span className="ml-1">• {media.year}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500">
-                Start rating your media to get personalized recommendations!
-              </p>
-            )}
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
+      </>
+    )}
+  </div>
+)}
         
         {isLoggedIn ? (
-          <>
-            {renderMediaList(wantToViewMedia, "Want to Read/Watch", <EyeIcon className="h-6 w-6 text-blue-500" />)}
-            {renderMediaList(inProgressMedia, "In Progress", <BookOpenIcon className="h-6 w-6 text-purple-500" />)}
-            {renderMediaList(finishedMedia, "Finished", <CheckIcon className="h-6 w-6 text-green-500" />)}
-            
-            {wantToViewMedia.length === 0 && inProgressMedia.length === 0 && finishedMedia.length === 0 && recommendations.length === 0 && (
-              <div className="mt-8 bg-gray-50 p-8 rounded-lg text-center">
-                <p className="text-gray-500">No media tracked yet. Start by searching for books, movies, or TV shows!</p>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="mt-8 bg-gray-50 p-8 rounded-lg text-center">
-            <p className="text-gray-500">Log in to start tracking your media!</p>
-          </div>
-        )}
+  <>
+    {renderMediaList(
+      wantToViewMedia, 
+      "Want to Read/Watch", 
+      <EyeIcon className="h-6 w-6 text-blue-500" />,
+      wantToViewCollapsed,
+      setWantToViewCollapsed,
+      'wantToView'
+    )}
+    
+    {renderMediaList(
+      inProgressMedia, 
+      "In Progress", 
+      <BookOpenIcon className="h-6 w-6 text-purple-500" />,
+      inProgressCollapsed,
+      setInProgressCollapsed,
+      'inProgress'
+    )}
+    
+    {renderMediaList(
+      finishedMedia, 
+      "Finished", 
+      <CheckIcon className="h-6 w-6 text-green-500" />,
+      finishedCollapsed,
+      setFinishedCollapsed,
+      'finished'
+    )}
+    
+    {wantToViewMedia.length === 0 && inProgressMedia.length === 0 && 
+     finishedMedia.length === 0 && recommendations.length === 0 && (
+      <div className="mt-8 bg-gray-50 p-8 rounded-lg text-center">
+        <p className="text-gray-500">No media tracked yet. Start by searching for books, movies, or TV shows!</p>
+      </div>
+    )}
+  </>
+) : (
+  <div className="mt-8 bg-gray-50 p-8 rounded-lg text-center">
+    <p className="text-gray-500">Log in to start tracking your media!</p>
+  </div>
+)}
       </div>
     </div>
   );

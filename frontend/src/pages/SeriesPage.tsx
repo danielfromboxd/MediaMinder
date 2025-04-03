@@ -154,7 +154,7 @@ const SeriesPage = () => {
         )}
         
         {data && data.results.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
             {data.results.map((series) => {
               const isTracked = isMediaTracked(String(series.id), 'tvshow');
               const trackedItem = isTracked ? getTrackedMediaItem(String(series.id), 'tvshow') : null;
@@ -165,7 +165,7 @@ const SeriesPage = () => {
                   className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div 
-                    className="h-56 bg-gray-100 flex items-center justify-center cursor-pointer relative"
+                    className="aspect-ratio-[2/3] w-full bg-gray-100 flex items-center justify-center cursor-pointer relative"
                     onClick={() => handleShowClick(series.id)}
                   >
                     {series.poster_path ? (
@@ -175,7 +175,11 @@ const SeriesPage = () => {
                         className="h-full object-cover w-full"
                       />
                     ) : (
-                      <div className="text-gray-400 text-sm p-4 text-center">No poster available</div>
+                      <img 
+                        src="https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+poster+available" 
+                        alt="No poster available"
+                        className="h-full w-full object-contain"
+                      />
                     )}
                     
                     {trackedItem && (
@@ -231,7 +235,10 @@ const SeriesPage = () => {
                         size="sm"
                         onClick={() => handleAddShow(series, 'want_to_view')}
                       >
-                        <PlusCircle className="h-4 w-4 mr-1" /> Add to collection
+                          <PlusCircle className="h-4 w-4 mr-1" />
+                          <span className="hidden sm:inline md:hidden">Add</span>
+                          <span className="hidden md:inline lg:hidden xl:inline">Add to list</span>
+                          <span className="inline sm:hidden lg:inline xl:hidden">Add</span>
                       </Button>
                     )}
                   </div>
@@ -338,7 +345,7 @@ const SeriesPage = () => {
     <>
       {/* Single add button with dropdown */}
       <div className="space-y-2">
-        <p className="text-sm text-gray-500">Add this series to your collection to rate it</p>
+        <p className="text-sm text-gray-500">Status</p>
         <Select 
           onValueChange={(status) => {
             handleAddShow(showDetails, status as MediaStatus);

@@ -4,7 +4,7 @@ import SearchInput from '@/components/SearchInput';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { X, Clock, Calendar, Star, DollarSign, TrendingUp, PlayCircle, PlusCircle, Trash2 } from "lucide-react";
+import { X, Clock, Calendar, Star, DollarSign, TrendingUp, PlayCircle, PlusCircle, Trash2, Film } from "lucide-react";
 import { useMovieSearch, useMovieDetails } from '@/hooks/useTMDB';
 import { getImageUrl, TMDBMovie } from '@/services/tmdbService';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
@@ -147,7 +147,7 @@ const MoviesPage = () => {
         )}
         
         {data && data.results.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
             {data.results.map((movie) => {
               const isTracked = isMediaTracked(String(movie.id), 'movie');
               const trackedItem = isTracked ? getTrackedMediaItem(String(movie.id), 'movie') : null;
@@ -158,7 +158,7 @@ const MoviesPage = () => {
                   className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div 
-                    className="h-56 bg-gray-100 flex items-center justify-center cursor-pointer relative"
+                    className="aspect-ratio-[2/3] w-full bg-gray-100 flex items-center justify-center cursor-pointer relative"
                     onClick={() => handleMovieClick(movie.id)}
                   >
                     {movie.poster_path ? (
@@ -168,7 +168,11 @@ const MoviesPage = () => {
                         className="h-full object-cover w-full"
                       />
                     ) : (
-                      <div className="text-gray-400 text-sm p-4 text-center">No poster available</div>
+                      <img 
+                        src="https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+poster+available" 
+                        alt="No poster available"
+                        className="h-full w-full object-contain"
+                      />
                     )}
                     
                     {trackedItem && (
@@ -224,7 +228,10 @@ const MoviesPage = () => {
                         size="sm"
                         onClick={() => handleAddMovie(movie, 'want_to_view')}
                       >
-                        <PlusCircle className="h-4 w-4 mr-1" /> Add to collection
+                          <PlusCircle className="h-4 w-4 mr-1" />
+                          <span className="hidden sm:inline md:hidden">Add</span>
+                          <span className="hidden md:inline lg:hidden xl:inline">Add to list</span>
+                          <span className="inline sm:hidden lg:inline xl:hidden">Add</span>
                       </Button>
                     )}
                   </div>

@@ -7,7 +7,7 @@ import { getBookCoverUrl, getBookDetails } from '@/services/openLibraryService';
 import { useMediaTracking, MediaStatus } from '@/contexts/MediaTrackingContext';
 import { toast } from '@/components/ui/use-toast';
 import StarRating from '@/components/StarRating';
-import { PlusCircle, Trash2, X } from "lucide-react";
+import { PlusCircle, Trash2, X, Book } from "lucide-react";
 import { getStatusDisplayText } from '@/utils/statusUtils';
 import { 
   Dialog, 
@@ -224,7 +224,7 @@ const BooksPage = () => {
         )}
         
         {data && data.docs.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
             {data.docs.map((book) => {
               const isTracked = isMediaTracked(book.key, 'book');
               const trackedItem = isTracked ? getTrackedMediaItem(book.key, 'book') : null;
@@ -235,17 +235,21 @@ const BooksPage = () => {
                   className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div 
-                    className="h-48 bg-gray-100 flex items-center justify-center cursor-pointer relative"
+                    className="aspect-ratio-[2/3] w-full bg-gray-100 flex items-center justify-center cursor-pointer relative"
                     onClick={() => handleBookClick(book)}
                   >
                     {book.cover_i ? (
                       <img 
                         src={getBookCoverUrl(book.cover_i)} 
                         alt={book.title}
-                        className="h-full object-contain"
+                        className="h-full w-full object-contain"
                       />
                     ) : (
-                      <div className="text-gray-400 text-sm p-4 text-center">No cover available</div>
+                      <img 
+                        src="https://placehold.co/233x350/F3F4F6/ABB1BC?text=No+cover+available" 
+                        alt="No cover available"
+                        className="h-full w-full object-contain"
+                      />
                     )}
                     
                     {trackedItem && (
@@ -304,7 +308,10 @@ const BooksPage = () => {
                         size="sm"
                         onClick={() => handleAddBook(book, 'want_to_view')}
                       >
-                        <PlusCircle className="h-4 w-4 mr-1" /> Add to collection
+                        <PlusCircle className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline md:hidden">Add</span>
+                        <span className="hidden md:inline lg:hidden xl:inline">Add to list</span>
+                        <span className="inline sm:hidden lg:inline xl:hidden">Add</span>
                       </Button>
                     )}
                   </div>
