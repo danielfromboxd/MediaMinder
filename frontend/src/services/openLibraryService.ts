@@ -304,74 +304,97 @@ export const getTrendingBooks = async (): Promise<OpenLibraryBook[]> => {
 */
 
 // Update in openLibraryService.ts
-export const getRecentBooks = async (): Promise<OpenLibraryBook[]> => {
-  // Get current year and previous year dynamically
-  const currentYear = new Date().getFullYear();
-  const lastYear = currentYear - 1;
+export const getRecentBooks = async (forceRefresh: boolean = false): Promise<OpenLibraryBook[]> => {
+  // Get current year and calculate current quarter
+  const now = new Date();
+  const currentYear = now.getFullYear();  // 2025
+  const currentQuarter = Math.floor(now.getMonth() / 3) + 1;  // 1-4 for Q1-Q4
+  
+  // Calculate start and end dates for the current quarter
+  const quarterStartMonth = (currentQuarter - 1) * 3;
+  const quarterStartDate = new Date(currentYear, quarterStartMonth, 1);
+  const quarterEndDate = new Date(currentYear, quarterStartMonth + 3, 0);
+  
+  console.log(`Fetching books for Q${currentQuarter} ${currentYear}: ${quarterStartDate.toDateString()} to ${quarterEndDate.toDateString()}`);
+  
+  // Create a special cache key for this quarter
+  const cacheKey = `recent_books_Q${currentQuarter}_${currentYear}`;
+  
+  // Only use cache if not forcing refresh
+  if (!forceRefresh) {
+    const cachedData = getFromSessionCache(cacheKey, 3600000); // 1 hour cache
+    if (cachedData) {
+      console.log("Using cached recent books for current quarter");
+      return cachedData;
+    }
+  }
   
   try {
-    // Try the newest additions via recent changes first
-    const recentChangesUrl = `${OPEN_LIBRARY_API_URL}/subjects/new_releases.json?limit=30`;
-    const recentChangesResponse = await fetchWithProxy(recentChangesUrl);
-
-    if (recentChangesResponse.ok) {
-      const data = await recentChangesResponse.json();
-      const works = data.works || [];
+    // Try multiple sources to find books from the current quarter
+    const sources = [
+      // Source 1: New releases
+      async () => {
+        const recentChangesUrl = `${OPEN_LIBRARY_API_URL}/subjects/new_releases.json?limit=50`;
+        const response = await fetchWithProxy(recentChangesUrl);
+        if (!response.ok) return [];
+        
+        const data = await response.json();
+        return (data.works || []).filter(book => 
+          book.first_publish_year === currentYear
+        );
+      },
       
-      // Filter by current or previous year
-      const recentBooks = works.filter(book => 
-        book.first_publish_year === currentYear || 
-        book.first_publish_year === lastYear
-      );
+      // Source 2: Search with current quarter and year
+      async () => {
+        const quarterSearchUrl = `${OPEN_LIBRARY_API_URL}/search.json?q=Q${currentQuarter}+${currentYear}&limit=30`;
+        const response = await fetchWithProxy(quarterSearchUrl);
+        if (!response.ok) return [];
+        
+        const data = await response.json();
+        return (data.docs || []).filter(book => 
+          book.first_publish_year === currentYear
+        );
+      },
       
-      console.log(`Found ${recentBooks.length} recent books from current/previous year`);
-      
-      // If we have at least 2 recent books, return them
-      if (recentBooks.length >= 2) {
-        return recentBooks;
+      // Source 3: Trending books from current year
+      async () => {
+        const trendingUrl = `${OPEN_LIBRARY_API_URL}/trending/daily.json?limit=50`;
+        const response = await fetchWithProxy(trendingUrl);
+        if (!response.ok) return [];
+        
+        const data = await response.json();
+        return (data.works || []).filter(book => 
+          book.first_publish_year === currentYear
+        );
       }
-    }
+    ];
     
-    // Fallback: try trending books and filter by year
-    const trendingUrl = `${OPEN_LIBRARY_API_URL}/trending/daily.json?limit=50`;
-    const trendingResponse = await fetchWithProxy(trendingUrl);
-    
-    if (trendingResponse.ok) {
-      const data = await trendingResponse.json();
-      const works = data.works || [];
+    // Try each source until we find enough books
+    let currentQuarterBooks: OpenLibraryBook[] = [];
+    for (const fetchSource of sources) {
+      if (currentQuarterBooks.length >= 5) break;
       
-      // Filter by current or previous year
-      const recentBooks = works.filter(book => 
-        book.first_publish_year === currentYear || 
-        book.first_publish_year === lastYear
+      const books = await fetchSource();
+      currentQuarterBooks = [...currentQuarterBooks, ...books];
+      
+      // Remove duplicates based on key
+      currentQuarterBooks = currentQuarterBooks.filter((book, index, self) => 
+        index === self.findIndex(b => b.key === book.key)
       );
-      
-      // If we have at least 2 recent books, return them
-      if (recentBooks.length >= 2) {
-        return recentBooks;
-      }
-      
-      // If we still don't have enough recent books,
-      // just take the most recent ones regardless of year
-      // and sort them by publish year (newest first)
-      const sortedByYear = works
-        .filter(book => book.first_publish_year) // Only books with a publish year
-        .sort((a, b) => b.first_publish_year - a.first_publish_year);
-      
-      return sortedByYear.slice(0, 5); // Take top 5 most recent
     }
     
-    // Last resort: search for books with the current year in title
-    const yearSearchUrl = `${OPEN_LIBRARY_API_URL}/search.json?q=${currentYear}&limit=10`;
-    const yearSearchResponse = await fetchWithProxy(yearSearchUrl);
-    
-    if (yearSearchResponse.ok) {
-      const data = await yearSearchResponse.json();
-      return data.docs || [];
+    // If we found ANY books from the current year, return them
+    if (currentQuarterBooks.length > 0) {
+      console.log(`Found ${currentQuarterBooks.length} books from ${currentYear}`);
+      saveToSessionCache(cacheKey, currentQuarterBooks);
+      return currentQuarterBooks;
     }
     
-    // If all else fails, return an empty array
+    // If we couldn't find any books from this year, return an empty array
+    // rather than falling back to older books
+    console.log(`No books found from ${currentYear}, returning empty array`);
     return [];
+    
   } catch (error) {
     console.error("Error fetching recent books:", error);
     return [];

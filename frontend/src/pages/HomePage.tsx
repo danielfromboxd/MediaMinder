@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { Link } from 'react-router-dom';
-import { Book, Tv, Film, Search, EyeIcon, BookOpenIcon, CheckIcon, Sparkles, TrendingUp, Clock } from 'lucide-react';
+import { Book, Tv, Film, Search, EyeIcon, BookOpenIcon, CheckIcon, Sparkles, TrendingUp, Clock, RefreshCw } from 'lucide-react';
 import { useMediaTracking } from '@/contexts/MediaTrackingContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getImageUrl, getRecentMovies, getRecentTVShows } from '@/services/tmdbService';
@@ -77,79 +77,124 @@ const HomePage = () => {
   const [newQuarterItems, setNewQuarterItems] = useState<any[]>([]);
   const [isLoadingNewQuarter, setIsLoadingNewQuarter] = useState(true);
 
+  // Add a state for controlling refresh
+  const [forceRefresh, setForceRefresh] = useState(false);
+
+  // Update the fetchNewItems function
+  const fetchNewItems = async () => {
+    setIsLoadingNewQuarter(true);
+    try {
+      // Get recently released/new media with force refresh parameter
+      const [moviesData, showsData, booksData] = await Promise.all([
+        getRecentMovies(forceRefresh),
+        getRecentTVShows(forceRefresh),
+        getRecentBooks(forceRefresh)
+      ]);
+      
+      // Reset force refresh flag
+      if (forceRefresh) setForceRefresh(false);
+      
+      // Format movies
+      const formattedMovies = moviesData.map(movie => ({
+        id: `movie_${movie.id}`,
+        title: movie.title,
+        type: 'movie',
+        mediaType: 'movie',
+        imageUrl: getImageUrl(movie.poster_path),
+        year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
+      }));
+      
+      // Format TV shows
+      const formattedShows = showsData.map(show => ({
+        id: `tvshow_${show.id}`,
+        title: show.name,
+        type: 'tvshow',
+        mediaType: 'tvshow',
+        imageUrl: getImageUrl(show.poster_path),
+        year: show.first_air_date ? new Date(show.first_air_date).getFullYear() : null,
+      }));
+      
+      // Format books
+      const formattedBooks = booksData.map(book => {
+        // Get the work ID (for details page navigation)
+        let bookId = '';
+        if (book.key) {
+          bookId = book.key.split('/').pop() || '';
+        }
+        
+        return {
+          id: `book_${bookId}`,
+          title: book.title,
+          type: 'book',
+          mediaType: 'book',
+          imageUrl: getBookCoverUrl(book, "M"),
+          year: book.first_publish_year,
+          cover_i: book.cover_i,
+          cover_edition_key: book.cover_edition_key,
+          key: book.key
+        };
+      });
+      
+      // Increase from 6 to 8 total items with balanced distribution
+      const maxItems = 8; // Changed from 6 to 8
+      let combined = [];
+      
+      // Target distribution: 2 books, 3 series, 3 movies
+      // First, add up to 2 books
+      const booksToAdd = Math.min(formattedBooks.length, 2);
+      combined.push(...formattedBooks.slice(0, booksToAdd));
+      
+      // Then add up to 3 TV shows
+      const showsToAdd = Math.min(formattedShows.length, 3);
+      combined.push(...formattedShows.slice(0, showsToAdd));
+      
+      // Then add up to 3 movies
+      const moviesToAdd = Math.min(formattedMovies.length, 3);
+      combined.push(...formattedMovies.slice(0, moviesToAdd));
+      
+      // If we still don't have 8 items, fill with any available media
+      const remainingSlots = maxItems - combined.length;
+      if (remainingSlots > 0) {
+        // Add any remaining books
+        if (formattedBooks.length > booksToAdd) {
+          const additionalBooks = Math.min(formattedBooks.length - booksToAdd, remainingSlots);
+          combined.push(...formattedBooks.slice(booksToAdd, booksToAdd + additionalBooks));
+        }
+        
+        // If still needed, add more shows
+        const currentCount = combined.length;
+        if (currentCount < maxItems && formattedShows.length > showsToAdd) {
+          const additionalShows = Math.min(formattedShows.length - showsToAdd, maxItems - currentCount);
+          combined.push(...formattedShows.slice(showsToAdd, showsToAdd + additionalShows));
+        }
+        
+        // If still needed, add more movies
+        const finalCount = combined.length;
+        if (finalCount < maxItems && formattedMovies.length > moviesToAdd) {
+          const additionalMovies = Math.min(formattedMovies.length - moviesToAdd, maxItems - finalCount);
+          combined.push(...formattedMovies.slice(moviesToAdd, moviesToAdd + additionalMovies));
+        }
+      }
+      
+      // Sort by newest first
+      combined = combined.sort((a, b) => {
+        if (!a.year) return 1;
+        if (!b.year) return -1;
+        return b.year - a.year;
+      });
+      
+      // Make sure we stay under the max items
+      setNewQuarterItems(combined.slice(0, maxItems));
+    } catch (error) {
+      console.error('Failed to fetch new items:', error);
+      setNewQuarterItems([]);
+    } finally {
+      setIsLoadingNewQuarter(false);
+    }
+  };
+
   // Fetch new content when component mounts
   useEffect(() => {
-    const fetchNewItems = async () => {
-      setIsLoadingNewQuarter(true);
-      try {
-        // Get recently released/new media
-        const [moviesData, showsData, booksData] = await Promise.all([
-          getRecentMovies(),
-          getRecentTVShows(),
-          getRecentBooks()
-        ]);
-        
-        // Format movies (take top 3)
-        const formattedMovies = moviesData.slice(0, 3).map(movie => ({
-          id: `movie_${movie.id}`,
-          title: movie.title,
-          type: 'movie',
-          mediaType: 'movie',
-          imageUrl: getImageUrl(movie.poster_path),
-          year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
-        }));
-        
-        // Format TV shows (take top 2)
-        const formattedShows = showsData.slice(0, 2).map(show => ({
-          id: `tvshow_${show.id}`,
-          title: show.name,
-          type: 'tvshow',
-          mediaType: 'tvshow',
-          imageUrl: getImageUrl(show.poster_path),
-          year: show.first_air_date ? new Date(show.first_air_date).getFullYear() : null,
-        }));
-        
-        // Format books (take top 2)
-        const formattedBooks = booksData.slice(0, 2).map(book => {
-          // Get the work ID (for details page navigation)
-          let bookId = '';
-          if (book.key) {
-            bookId = book.key.split('/').pop() || '';
-          }
-          
-          return {
-            id: `book_${bookId}`,
-            title: book.title,
-            type: 'book',
-            mediaType: 'book',
-            imageUrl: getBookCoverUrl(book, "M"),  // Use our improved function
-            year: book.first_publish_year,
-            
-            // Store all possible cover sources for later fallbacks
-            cover_i: book.cover_i,
-            cover_edition_key: book.cover_edition_key,
-            // Store book.key for later OLID extraction if needed
-            key: book.key
-          };
-        });
-        
-        // Combine all items and sort by newest first
-        const combined = [...formattedMovies, ...formattedShows, ...formattedBooks]
-          .sort((a, b) => {
-            if (!a.year) return 1;
-            if (!b.year) return -1;
-            return b.year - a.year;
-          });
-        
-        setNewQuarterItems(combined.slice(0, 6));
-      } catch (error) {
-        console.error('Failed to fetch new items:', error);
-        setNewQuarterItems([]);
-      } finally {
-        setIsLoadingNewQuarter(false);
-      }
-    };
-    
     fetchNewItems();
   }, []);
 
@@ -318,9 +363,22 @@ const HomePage = () => {
         </div>
         
         <div className="mt-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-6 w-6 text-red-500" />
-            <h2 className="text-2xl font-semibold">New This Quarter</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-6 w-6 text-red-500" />
+              <h2 className="text-2xl font-semibold">New This Quarter</h2>
+            </div>
+            <button 
+              onClick={() => {
+                setForceRefresh(true);
+                fetchNewItems();
+              }}
+              className="text-sm text-blue-500 hover:underline flex items-center"
+              disabled={isLoadingNewQuarter}
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Refresh
+            </button>
           </div>
           {isLoadingNewQuarter ? (
             // Show loading skeleton while data is being fetched
