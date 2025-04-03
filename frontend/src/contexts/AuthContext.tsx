@@ -29,17 +29,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if token exists in localStorage
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    const verifyAuthentication = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Attempt to verify token
+        const result = await authAPI.verify();
+        
+        if (result.valid) {
+          setUser(result.user);
+          setIsLoggedIn(true);
+          
+          // Schedule token refresh
+          const REFRESH_INTERVAL = 23 * 60 * 60 * 1000; // 23 hours
+          const refreshTimer = setTimeout(refreshUserToken, REFRESH_INTERVAL);
+          
+          // Clean up timer on unmount
+          return () => clearTimeout(refreshTimer);
+        } else {
+          logout();
+        }
+      } catch (error) {
+        console.error("Auth verification error:", error);
+        
+        // On network errors, use stored user data as fallback
+        if (!navigator.onLine) {
+          try {
+            const userData = localStorage.getItem('user');
+            if (userData) {
+              setUser(JSON.parse(userData));
+              setIsLoggedIn(true);
+            }
+          } catch (e) {
+            console.error("Failed to parse stored user data:", e);
+          }
+        } else {
+          // For other errors, logout
+          logout();
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    if (token && userData) {
-      setUser(JSON.parse(userData));
-      setIsLoggedIn(true);
-    }
-    
-    setIsLoading(false);
+    verifyAuthentication();
   }, []);
+
+  // Add token refresh function
+  const refreshUserToken = async () => {
+    try {
+      const result = await authAPI.refresh();
+      if (result.token) {
+        localStorage.setItem('token', result.token);
+        
+        // Schedule next refresh
+        const REFRESH_INTERVAL = 23 * 60 * 60 * 1000; // 23 hours
+        setTimeout(refreshUserToken, REFRESH_INTERVAL);
+      }
+    } catch (error) {
+      console.error("Failed to refresh token:", error);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setError(null);
@@ -48,17 +102,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await authAPI.login(email, password);
       console.log("Login response:", response);
       
-      // Store token and user data
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      if (response && response.token) {
+        // Store token and user data
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        
+        setUser({
+          id: response.user.id,
+          username: response.user.username,
+          email: response.user.email,
+          is_private: response.user.is_private
+        });
+        
+        setIsLoggedIn(true);
+        console.log("Login successful, token saved to localStorage");
+      } else {
+        throw new Error("Invalid response format from server");
+      }
       
-      setUser({
-        id: response.user.id,
-        username: response.user.username,
-        email: response.user.email
-      });
-      
-      setIsLoggedIn(true);
       setIsLoading(false);
       return true;
     } catch (err: any) {
