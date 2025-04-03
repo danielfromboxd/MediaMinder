@@ -1,5 +1,5 @@
 from flask import request, jsonify
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, get_jwt_identity
 from datetime import timedelta
 from ..models.db import db
 from ..models.user import User
@@ -71,4 +71,31 @@ def login():
         'message': 'Login successful',
         'token': access_token,
         'user': user.to_dict()
+    }), 200
+
+def verify():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    if not user:
+        return jsonify({"valid": False, "error": "User not found"}), 401
+    
+    return jsonify({
+        "valid": True,
+        "user": user.to_dict()
+    }), 200
+
+def refresh():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    
+    # Generate a new access token
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={'username': user.username},
+        expires_delta=timedelta(days=7)
+    )
+    
+    return jsonify({
+        "token": access_token,
+        "message": "Token refreshed successfully"
     }), 200
