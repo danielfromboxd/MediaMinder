@@ -194,11 +194,22 @@ const HomePage = () => {
   };
 
   const getMediaLink = (media: any) => {
-    const mediaId = media.id.includes('_') ? media.id.split('_')[1] : media.id;
+    // Use the mediaId (external API ID) for linking to detail pages
+    // If mediaId is not available, fall back to the current behavior
+    let externalId = media.mediaId || media.id;
     
-    if (media.type === 'book') return `/books/detail/${mediaId}`;
-    if (media.type === 'movie') return `/movies/detail/${mediaId}`;
-    if (media.type === 'tvshow') return `/series/detail/${mediaId}`;
+    // If it still has a prefix, strip it
+    if (typeof externalId === 'string' && (
+        externalId.includes('movie_') || 
+        externalId.includes('book_') || 
+        externalId.includes('tvshow_')
+      )) {
+      externalId = externalId.split('_')[1];
+    }
+    
+    if (media.type === 'book') return `/books/detail/${externalId}`;
+    if (media.type === 'movie') return `/movies/detail/${externalId}`;
+    if (media.type === 'tvshow') return `/series/detail/${externalId}`;
     return '/home';
   };
 
