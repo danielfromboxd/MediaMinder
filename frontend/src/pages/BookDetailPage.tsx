@@ -24,7 +24,7 @@ const BookDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ratingUpdateCounter, setRatingUpdateCounter] = useState(0); // Add this line
-  const coverUrlRef = useRef<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
 
   const { 
     getAllMedia, 
@@ -156,6 +156,38 @@ const BookDetailPage = () => {
     fetchBookDetails();
   }, [id, getAllMedia, trackedMedia, ratingUpdateCounter]); // Add trackedMedia and ratingUpdateCounter deps
 
+  useEffect(() => {
+    // Don't do anything if we don't have book data yet
+    if (!book) return;
+    
+    // If we already have a cover URL, don't change it
+    if (coverUrl) return;
+    
+    // First try cover_i (which is what tracked books normally use)
+    if (book.cover_i) {
+      setCoverUrl(`https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`);
+      console.log("Using cover_i for image:", book.cover_i);
+      return;
+    }
+    
+    // Then try the covers array (which is what API-fetched books often have)
+    if (book.covers && book.covers.length > 0) {
+      setCoverUrl(`https://covers.openlibrary.org/b/id/${book.covers[0]}-L.jpg`);
+      console.log("Using first cover from covers array:", book.covers[0]);
+      return;
+    }
+    
+    // Try cover_edition_key as a last resort
+    if (book.cover_edition_key) {
+      setCoverUrl(`https://covers.openlibrary.org/b/olid/${book.cover_edition_key}-L.jpg`);
+      console.log("Using cover_edition_key for image:", book.cover_edition_key);
+      return;
+    }
+    
+    // No cover available
+    console.log("No cover found for this book");
+  }, [book, coverUrl]);
+
   const isTracked = book ? isMediaTracked(book.key, 'book') : false;
   const trackedItem = isTracked ? getTrackedMediaItem(book?.key, 'book') : null;
 
@@ -274,11 +306,6 @@ const BookDetailPage = () => {
     );
   }
 
-  if (book?.cover_i && !coverUrlRef.current) {
-    coverUrlRef.current = `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`;
-    console.log("Set permanent cover URL:", coverUrlRef.current);
-  }
-
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -294,12 +321,13 @@ const BookDetailPage = () => {
         <div className="flex flex-col md:flex-row gap-8">
           <div className="md:w-1/3">
             <div className="rounded-lg overflow-hidden shadow-md">
-              {coverUrlRef.current ? (
+              {coverUrl ? (
                 <img 
-                  src={coverUrlRef.current}
+                  src={coverUrl}
                   alt={book.title}
                   className="w-full object-cover"
                   onError={(e) => {
+                    console.error("Failed to load cover image:", coverUrl);
                     const target = e.target as HTMLImageElement;
                     target.onerror = null;
                     target.style.display = 'none';
@@ -448,7 +476,6 @@ const BookDetailPage = () => {
             )}
             
             {/* Debugging section for raw data; keep for debugging */}
-            {/*
             <div className="mt-6 p-4 bg-gray-50 rounded-md">
               <h3 className="font-semibold text-sm mb-2">Available Book Data (Debug):</h3>
               <details>
@@ -458,7 +485,6 @@ const BookDetailPage = () => {
                 </pre>
               </details>
             </div>
-            */}
           </div>
         </div>
       </div>
