@@ -6,11 +6,10 @@ import { useMediaTracking } from '@/contexts/MediaTrackingContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getImageUrl, getRecentMovies, getRecentTVShows } from '@/services/tmdbService';
 import { getBookCoverUrl, getRecentBooks } from '@/services/openLibraryService';
-import MediaStatusBadge from '@/components/MediaStatusBadge';
 import StarRating from '@/components/StarRating';
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-
+import { useRecommendations } from '@/hooks/useRecommendations';
 
 const HomePage = () => {
   const { isLoggedIn, user } = useAuth();
@@ -31,47 +30,6 @@ const HomePage = () => {
   const moviesCount = isLoggedIn ? getMediaByStatus('want_to_view').filter(m => m.type === 'movie').length + 
                                  getMediaByStatus('in_progress').filter(m => m.type === 'movie').length + 
                                  getMediaByStatus('finished').filter(m => m.type === 'movie').length : 0;
-
-  const generateRecommendedMedia = () => {
-    const allMedia = getAllMedia();
-    if (allMedia.length === 0) {
-      return [
-        {
-          id: 'rec-1',
-          title: 'The Hunger Games',
-          type: 'book',
-          posterPath: '12646537',
-          popularity: 9.8
-        },
-        {
-          id: 'rec-2',
-          title: 'Brooklyn Nine-Nine',
-          type: 'tvshow',
-          posterPath: '/qYjAdP0n62dJ9WLl8WGeQj7CGPH.jpg',
-          popularity: 9.5
-        },
-        {
-          id: 'rec-3',
-          title: 'Inception',
-          type: 'movie',
-          posterPath: '/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg',
-          popularity: 9.7
-        },
-        {
-          id: 'rec-4',
-          title: 'The Great Gatsby',
-          type: 'book',
-          posterPath: '8436903',
-          popularity: 9.2
-        }
-      ];
-    }
-
-    return allMedia
-      .filter(media => media.rating && media.rating >= 4)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 4);
-  };
 
   // Add state for popular media
   const [newQuarterItems, setNewQuarterItems] = useState<any[]>([]);
@@ -198,7 +156,8 @@ const HomePage = () => {
     fetchNewItems();
   }, []);
 
-  const recommendedMedia = isLoggedIn ? generateRecommendedMedia() : [];
+  const { recommendations, isLoading: isLoadingRecommendations, refresh: refreshRecommendations } = 
+    useRecommendations();
 
   const getMediaImageSrc = (media: any) => {
     if (media.type === 'book') {
@@ -238,25 +197,46 @@ const HomePage = () => {
     return 'https://via.placeholder.com/150?text=No+Image';
   };
 
-  const getMediaLink = (media: any) => {
-    // Use the mediaId (external API ID) for linking to detail pages
-    // If mediaId is not available, fall back to the current behavior
-    let externalId = media.mediaId || media.id;
+  // Fix the getMediaLink function:
+
+const getMediaLink = (media: any) => {
+  // For books specifically, handle the special format
+  if (media.type === 'book') {
+    let bookId = media.mediaId || media.id;
     
-    // If it still has a prefix, strip it
-    if (typeof externalId === 'string' && (
-        externalId.includes('movie_') || 
-        externalId.includes('book_') || 
-        externalId.includes('tvshow_')
-      )) {
-      externalId = externalId.split('_')[1];
+    // Convert string ID to proper format
+    if (typeof bookId === 'string') {
+      // If it includes /works/ format, extract just the ID part
+      if (bookId.includes('/works/')) {
+        bookId = bookId.split('/works/')[1];
+      } else if (bookId.startsWith('/')) {
+        // Remove leading slash if present
+        bookId = bookId.substring(1);
+      }
+      
+      // Handle compound IDs (book_OL123W)
+      if (bookId.includes('book_')) {
+        bookId = bookId.split('book_')[1];
+      }
     }
     
-    if (media.type === 'book') return `/books/detail/${externalId}`;
-    if (media.type === 'movie') return `/movies/detail/${externalId}`;
-    if (media.type === 'tvshow') return `/series/detail/${externalId}`;
-    return '/home';
-  };
+    return `/books/detail/${bookId}`;
+  }
+  
+  // For movies and TV shows (existing code)
+  let externalId = media.mediaId || media.id;
+  
+  if (typeof externalId === 'string' && (
+      externalId.includes('movie_') || 
+      externalId.includes('tvshow_')
+    )) {
+    externalId = externalId.split('_')[1];
+  }
+  
+  if (media.type === 'movie') return `/movies/detail/${externalId}`;
+  if (media.type === 'tvshow') return `/series/detail/${externalId}`;
+  return '/home';
+};
 
   const renderMediaList = (mediaList: any[], title: string, icon: React.ReactNode) => {
     if (mediaList.length === 0) {
@@ -440,45 +420,79 @@ const HomePage = () => {
         
         {isLoggedIn && (
           <div className="mt-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="h-6 w-6 text-amber-500" />
-              <h2 className="text-2xl font-semibold">Recommended for You</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-6 w-6 text-amber-500" />
+                <h2 className="text-2xl font-semibold">Recommended for You</h2>
+              </div>
+              <button 
+                onClick={() => refreshRecommendations()}
+                className="text-sm text-blue-500 hover:underline flex items-center"
+                disabled={isLoadingRecommendations}
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {recommendedMedia.map(media => (
-                <Link 
-                  key={media.id} 
-                  to={getMediaLink(media)}
-                  className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="relative h-40 bg-gray-100 flex items-center justify-center">
-                    {media.posterPath ? (
-                      <img 
-                        src={getMediaImageSrc(media)} 
-                        alt={media.title}
-                        className="h-full object-cover w-full"
-                      />
-                    ) : (
-                      <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
-                    )}
-                    {media.popularity && (
-                      <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                        {media.popularity.toFixed(1)}
+            
+            {isLoadingRecommendations ? (
+              // Show loading skeleton while recommendations are being fetched
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map(i => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-48 w-full" />
+                    <CardContent className="p-4">
+                      <Skeleton className="h-4 w-3/4 mb-2" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : recommendations.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {recommendations.map(media => (
+                  <Link 
+                    key={media.id} 
+                    to={getMediaLink(media)}
+                    className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="relative h-40 bg-gray-100 flex items-center justify-center">
+                      {media.imageUrl ? (
+                        <img 
+                          src={media.imageUrl} 
+                          alt={media.title}
+                          className="h-full object-cover w-full"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null;
+                            target.src = 'https://via.placeholder.com/150?text=No+Image';
+                          }}
+                        />
+                      ) : (
+                        <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
+                      )}
+                      {/* Relevance score */}
+                      <div className="absolute top-2 right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
+                        {Math.round(media.relevance * 100)}% Match
                       </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-semibold text-md line-clamp-1">{media.title}</h3>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="text-xs flex items-center">
-                        {media.type === 'book' ? 'Book' : media.type === 'movie' ? 'Movie' : 'TV Show'}
-                      </div>
-                      {media.rating && <StarRating rating={media.rating} size="sm" />}
                     </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                    <div className="p-3">
+                      <h3 className="font-semibold text-md line-clamp-1">{media.title}</h3>
+                      <div className="mt-1 flex items-center justify-between">
+                        <div className="text-xs flex items-center">
+                          {media.type === 'book' ? 'Book' : media.type === 'movie' ? 'Movie' : 'TV Show'}
+                          {media.year && <span className="ml-1">• {media.year}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">
+                Start rating your media to get personalized recommendations!
+              </p>
+            )}
           </div>
         )}
         
@@ -488,7 +502,7 @@ const HomePage = () => {
             {renderMediaList(inProgressMedia, "In Progress", <BookOpenIcon className="h-6 w-6 text-purple-500" />)}
             {renderMediaList(finishedMedia, "Finished", <CheckIcon className="h-6 w-6 text-green-500" />)}
             
-            {wantToViewMedia.length === 0 && inProgressMedia.length === 0 && finishedMedia.length === 0 && recommendedMedia.length === 0 && (
+            {wantToViewMedia.length === 0 && inProgressMedia.length === 0 && finishedMedia.length === 0 && recommendations.length === 0 && (
               <div className="mt-8 bg-gray-50 p-8 rounded-lg text-center">
                 <p className="text-gray-500">No media tracked yet. Start by searching for books, movies, or TV shows!</p>
               </div>

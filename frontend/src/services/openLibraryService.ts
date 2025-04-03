@@ -42,7 +42,7 @@ const getFromSessionCache = (key: string, maxAgeMs = 3600000) => { // Default 1 
 };
 
 // Helper function to use a CORS proxy if needed
-const fetchWithProxy = async (url: string): Promise<Response> => {
+export const fetchWithProxy = async (url: string): Promise<Response> => {
   try {
     // Try direct fetch first
     const directResponse = await fetch(url);
