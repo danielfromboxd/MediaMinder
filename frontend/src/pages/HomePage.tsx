@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { Link } from 'react-router-dom';
-import { Book, Tv, Film, Search, EyeIcon, BookOpenIcon, CheckIcon, Sparkles, TrendingUp, Clock, RefreshCw } from 'lucide-react';
+import { Book, Tv, Film, Search, EyeIcon, BookOpenIcon, CheckIcon, Sparkles, TrendingUp, Clock, RefreshCw, EyeOff } from 'lucide-react';
 import { useMediaTracking } from '@/contexts/MediaTrackingContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getImageUrl, getRecentMovies, getRecentTVShows } from '@/services/tmdbService';
@@ -37,6 +37,21 @@ const HomePage = () => {
 
   // Add a state for controlling refresh
   const [forceRefresh, setForceRefresh] = useState(false);
+
+  // Add this state near your other useState declarations:
+  const [newQuarterCollapsed, setNewQuarterCollapsed] = useState(() => {
+    // Load saved preference from localStorage on component mount
+    const saved = localStorage.getItem('newQuarterCollapsed');
+    return saved === 'true'; // Convert string to boolean
+  });
+
+  // Add this function to handle toggling:
+  const toggleNewQuarter = () => {
+    const newValue = !newQuarterCollapsed;
+    setNewQuarterCollapsed(newValue);
+    // Save to localStorage
+    localStorage.setItem('newQuarterCollapsed', newValue.toString());
+  };
 
   // Update the fetchNewItems function
   const fetchNewItems = async () => {
@@ -348,73 +363,98 @@ const getMediaLink = (media: any) => {
               <Clock className="h-6 w-6 text-red-500" />
               <h2 className="text-2xl font-semibold">New This Quarter</h2>
             </div>
-            <button 
-              onClick={() => {
-                setForceRefresh(true);
-                fetchNewItems();
-              }}
-              className="text-sm text-blue-500 hover:underline flex items-center"
-              disabled={isLoadingNewQuarter}
-            >
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Refresh
-            </button>
+            <div className="flex items-center">
+              <button 
+                onClick={() => {
+                  setForceRefresh(true);
+                  fetchNewItems();
+                }}
+                className="text-sm text-blue-500 hover:underline flex items-center mr-4"
+                disabled={isLoadingNewQuarter}
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </button>
+              <button 
+                onClick={toggleNewQuarter}
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+                title={newQuarterCollapsed ? "Show section" : "Hide section"}
+              >
+                {newQuarterCollapsed ? (
+                  <>
+                    <EyeIcon className="h-4 w-4 mr-1" />
+                    Show
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-1" />
+                    Hide
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-          {isLoadingNewQuarter ? (
-            // Show loading skeleton while data is being fetched
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map(i => (
-                <Card key={i} className="overflow-hidden">
-                  <Skeleton className="h-48 w-full" />
-                  <CardContent className="p-4">
-                    <Skeleton className="h-4 w-3/4 mb-2" />
-                    <Skeleton className="h-3 w-1/3" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : newQuarterItems.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {newQuarterItems.map(media => (
-                <Link 
-                  key={media.id} 
-                  to={getMediaLink(media)}
-                  className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="relative h-40 bg-gray-100 flex items-center justify-center">
-                    {media.imageUrl ? (
-                      <img 
-                        src={media.imageUrl} 
-                        alt={media.title}
-                        className="h-full object-cover w-full"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.onerror = null;
-                          target.src = 'https://via.placeholder.com/150?text=No+Image';
-                        }}
-                      />
-                    ) : (
-                      <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
-                    )}
-                    {/* Release year */}
-                    <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                      {media.year || 'New'}
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-semibold text-md line-clamp-1">{media.title}</h3>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="text-xs flex items-center">
-                        {media.type === 'book' ? 'Book' : media.type === 'movie' ? 'Movie' : 'TV Show'}
+          
+          {/* Only render content if not collapsed */}
+          {!newQuarterCollapsed && (
+            <>
+              {isLoadingNewQuarter ? (
+                // Show loading skeleton while data is being fetched
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <Card key={i} className="overflow-hidden">
+                      <Skeleton className="h-48 w-full" />
+                      <CardContent className="p-4">
+                        <Skeleton className="h-4 w-3/4 mb-2" />
+                        <Skeleton className="h-3 w-1/3" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : newQuarterItems.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {newQuarterItems.map(media => (
+                    <Link 
+                      key={media.id} 
+                      to={getMediaLink(media)}
+                      className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <div className="relative h-40 bg-gray-100 flex items-center justify-center">
+                        {media.imageUrl ? (
+                          <img 
+                            src={media.imageUrl} 
+                            alt={media.title}
+                            className="h-full object-cover w-full"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null;
+                              target.src = 'https://via.placeholder.com/150?text=No+Image';
+                            }}
+                          />
+                        ) : (
+                          <div className="text-gray-400 text-sm p-4 text-center">No image available</div>
+                        )}
+                        {/* Release year */}
+                        <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                          {media.year || 'New'}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            // If API calls failed, show a message
-            <p className="text-gray-500">Unable to load new content. Please try again later.</p>
+                      <div className="p-3">
+                        <h3 className="font-semibold text-md line-clamp-1">{media.title}</h3>
+                        <div className="mt-1 flex items-center justify-between">
+                          <div className="text-xs flex items-center">
+                            {media.type === 'book' ? 'Book' : media.type === 'movie' ? 'Movie' : 'TV Show'}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                // If API calls failed, show a message
+                <p className="text-gray-500">Unable to load new content. Please try again later.</p>
+              )}
+            </>
           )}
         </div>
         

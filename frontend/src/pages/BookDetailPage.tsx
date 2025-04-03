@@ -42,6 +42,7 @@ const BookDetailPage = () => {
       // Find the book in our tracked media
       const allMedia = getAllMedia();
       let decodedId = id;
+      let trackedBook = null;
       
       // Handle URL-encoded IDs from OpenLibrary (like %2Fworks%2FOL123W)
       if (id && id.includes('%')) {
@@ -49,7 +50,7 @@ const BookDetailPage = () => {
       }
       
       // Try multiple ways to match the book
-      const trackedBook = allMedia.find(media => 
+      trackedBook = allMedia.find(media => 
         media.type === 'book' && (
           media.mediaId.toString() === id || 
           media.mediaId.toString() === decodedId ||
@@ -58,80 +59,94 @@ const BookDetailPage = () => {
         )
       );
       
-      if (trackedBook) {
-        // Properly format the book object with the ID that isMediaTracked expects
-        setBook({
-          ...trackedBook,
-          key: trackedBook.mediaId
-        });
+      // Store tracked information for status and rating
+      let trackedInfo = trackedBook ? {
+        status: trackedBook.status,
+        rating: trackedBook.rating,
+        id: trackedBook.id
+      } : null;
+      
+      // IMPORTANT CHANGE: Always fetch full details from API
+      try {
+        // Clean up the ID - use trackedBook.mediaId if available
+        let bookId = trackedBook?.mediaId || id;
         
-        // NEW CODE: Extract cover ID from posterPath if present
-        if (trackedBook.posterPath && trackedBook.posterPath.includes('/b/id/')) {
-          const coverId = trackedBook.posterPath.split('/b/id/')[1].split('-')[0];
-          setBook(prev => ({
-            ...prev,
-            cover_i: coverId
-          }));
+        // Handle book_OL12345W format from New This Quarter
+        if (typeof bookId === 'string' && bookId.includes('book_')) {
+          bookId = bookId.replace('book_', '');
         }
         
-        setLoading(false);
-      } else {
-        // FETCH FROM API DIRECTLY
-        try {
-          // Clean up the ID
-          let bookId = id;
-          
-          // Handle book_OL12345W format from New This Quarter
-          if (typeof bookId === 'string' && bookId.includes('book_')) {
-            bookId = bookId.replace('book_', '');
-          }
-          
-          // If it looks like an OpenLibrary ID without the /works/ prefix, add it back
-          if (typeof bookId === 'string' && !bookId.includes('/') && bookId.match(/^OL\d+W$/)) {
+        // Format OpenLibrary path correctly
+        if (typeof bookId === 'string') {
+          // If it doesn't start with /works/ and looks like an OL id
+          if (!bookId.includes('/works/') && bookId.match(/OL\d+W$/)) {
             bookId = `/works/${bookId}`;
-            console.log("Reformatted to OpenLibrary path:", bookId);
+          } 
+          // If it doesn't have the leading slash, add it
+          else if (!bookId.startsWith('/') && bookId.includes('works/')) {
+            bookId = `/${bookId}`;
           }
-          
-          console.log("Fetching book details for:", bookId);
-          const bookDetails = await getBookDetails(bookId);
-          
-          // NEW CODE: Make an additional API call to get editions (which contain cover info)
-          if (bookDetails) {
-            try {
-              const editionsUrl = `https://openlibrary.org${bookDetails.key}/editions.json?limit=1`;
-              console.log("Fetching editions for cover info:", editionsUrl);
+        }
+        
+        console.log("Fetching book details for:", bookId);
+        const bookDetails = await getBookDetails(bookId);
+        
+        // Make an additional API call to get editions (which contain cover info)
+        if (bookDetails) {
+          try {
+            const editionsUrl = `https://openlibrary.org${bookDetails.key}/editions.json?limit=1`;
+            console.log("Fetching editions for cover info:", editionsUrl);
+            
+            const editionsResponse = await fetch(editionsUrl);
+            if (editionsResponse.ok) {
+              const editionsData = await editionsResponse.json();
               
-              const editionsResponse = await fetch(editionsUrl);
-              if (editionsResponse.ok) {
-                const editionsData = await editionsResponse.json();
+              if (editionsData.entries && editionsData.entries.length > 0) {
+                const firstEdition = editionsData.entries[0];
                 
-                if (editionsData.entries && editionsData.entries.length > 0) {
-                  const firstEdition = editionsData.entries[0];
-                  
-                  // Add cover information from the edition
-                  if (firstEdition.covers && firstEdition.covers.length > 0) {
-                    bookDetails.cover_i = firstEdition.covers[0];
-                    console.log("Found cover ID:", firstEdition.covers[0]);
-                  }
-                  
-                  if (firstEdition.cover_i) {
-                    bookDetails.cover_i = firstEdition.cover_i;
-                    console.log("Found edition cover_i:", firstEdition.cover_i);
-                  }
+                // Add cover information from the edition
+                if (firstEdition.covers && firstEdition.covers.length > 0) {
+                  bookDetails.cover_i = firstEdition.covers[0];
+                  console.log("Found cover ID:", firstEdition.covers[0]);
+                }
+                
+                if (firstEdition.cover_i) {
+                  bookDetails.cover_i = firstEdition.cover_i;
+                  console.log("Found edition cover_i:", firstEdition.cover_i);
                 }
               }
-            } catch (editionError) {
-              console.error("Failed to fetch edition data for covers:", editionError);
             }
-            
-            setBook(bookDetails);
-            setLoading(false);
-          } else {
-            setError("Book not found");
-            setLoading(false);
+          } catch (editionError) {
+            console.error("Failed to fetch edition data for covers:", editionError);
           }
-        } catch (error) {
-          console.error("Error fetching book details:", error);
+          
+          // If we already have a tracked book, merge tracking info with API details
+          if (trackedInfo) {
+            setBook({
+              ...bookDetails,
+              ...trackedInfo,
+              key: trackedBook!.mediaId,  // Keep the key for isMediaTracked
+              cover_i: trackedBook!.cover_i || bookDetails.cover_i  // Preserve cover if available
+            });
+          } else {
+            setBook(bookDetails);
+          }
+          setLoading(false);
+        } else {
+          setError("Book not found");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching book details:", error);
+        
+        // If API fetch fails but we have a tracked book, at least show that
+        if (trackedBook) {
+          setBook({
+            ...trackedBook,
+            key: trackedBook.mediaId
+          });
+          setLoading(false);
+        } else {
           setError("Failed to load book details");
           setLoading(false);
         }
@@ -419,8 +434,21 @@ const BookDetailPage = () => {
                 </div>
               </div>
             )}
+
+            {/* Description Section */}
+            {book.description && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-2">Description</h3>
+                {typeof book.description === 'string' ? (
+                  <p className="text-gray-700">{book.description}</p>
+                ) : book.description?.value ? (
+                  <p className="text-gray-700">{book.description.value}</p>
+                ) : null}
+              </div>
+            )}
             
-            {/* Debug information - keep this for development */}
+            {/* Debugging section for raw data; keep for debugging */}
+            {/*
             <div className="mt-6 p-4 bg-gray-50 rounded-md">
               <h3 className="font-semibold text-sm mb-2">Available Book Data (Debug):</h3>
               <details>
@@ -430,6 +458,7 @@ const BookDetailPage = () => {
                 </pre>
               </details>
             </div>
+            */}
           </div>
         </div>
       </div>
